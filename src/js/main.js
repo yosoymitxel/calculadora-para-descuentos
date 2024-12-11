@@ -11,114 +11,125 @@ function formatNumberWithDot(number) {
     return number.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
+function calculateLevels(income) {
+    return levels.map(level => {
+        const discount = Math.min(income, level.limit) * level.rate;
+        return income - discount;
+    });
+}
 
+function updateTotalTable(total) {
+    const totNiveles = calculateLevels(total);
+
+    $("#total").text(formatNumberWithDot(total)); // Usar la función de formato
+
+    totNiveles.forEach((value, index) => {
+        const levelCell = $(`#level${index + 1}`);
+        levelCell.text(formatNumberWithDot(value)); // Usar la función de formato
+
+        // Aplicar color si excede el límite
+        if (total > levels[index].limit) {
+            levelCell.addClass('bg-danger');
+        } else {
+            levelCell.removeClass('bg-danger');
+        }
+    });
+}
+
+// Función para analizar la expresión y eliminar *1
+function parseEquation(equation) {
+    const lines = equation.split('+'); // Dividir la expresión por el símbolo +
+    const parsedLines = [];
+
+    lines.forEach(line => {
+        const parts = line.split('*'); // Dividir por el símbolo *
+        if (parts.length === 2) {
+            const precioUnitario = parseFloat(parts[0].trim());
+            const cantidad = parseFloat(parts[1].trim());
+            if (isNaN(precioUnitario) || isNaN(cantidad)) {
+                // Si alguno es NaN, asignamos 0
+                parsedLines.push({
+                    precioUnitario: 0,
+                    cantidad: 0,
+                    totalProducto: 0
+                });
+            } else {
+                parsedLines.push({
+                    precioUnitario: precioUnitario,
+                    cantidad: cantidad,
+                    totalProducto: precioUnitario * cantidad
+                });
+            }
+        } else if (parts.length === 1) {
+            const precioUnitario = parseFloat(parts[0].trim());
+            if (isNaN(precioUnitario)) {
+                // Si es NaN, asignamos 0
+                parsedLines.push({
+                    precioUnitario: 0,
+                    cantidad: 1,
+                    totalProducto: 0
+                });
+            } else {
+                parsedLines.push({
+                    precioUnitario: precioUnitario,
+                    cantidad: 1,
+                    totalProducto: precioUnitario
+                });
+            }
+        }
+    });
+
+    return parsedLines;
+}
+
+// Función para generar la ecuación sin *1
+function generateEquation() {
+    let equation = dataJson.map(item => {
+        // No mostrar *1 si la cantidad es 1
+        if (item.cantidad === 1) {
+            return `${item.precioUnitario}`;
+        } else {
+            return `${item.precioUnitario}*${item.cantidad}`;
+        }
+    }).join('+');
+
+    return equation;
+}
+
+function updateTable() {
+    $('#resultTable tbody').empty(); // Limpiar la tabla
+
+    dataJson.forEach(item => {
+        const row = $('<tr>')
+            .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.precioUnitario)}</td>`) // Usar la función de formato
+            .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.cantidad)}</td>`) // Usar la función de formato
+            .append(`<td>${formatNumberWithDot(item.totalProducto)}</td>`); // Usar la función de formato
+        $('#resultTable tbody').append(row);
+    });
+
+    // Actualizar la calculadora con la nueva ecuación
+    $('#calculatorInput').val(generateEquation());
+
+    // Actualizar el total
+    updateTotal();
+}
+
+ // Función para actualizar el total
+function updateTotal() {
+    let total = 0;
+    dataJson.forEach(item => {
+        total += item.totalProducto;
+    });
+
+    updateTotalTable(total);
+
+    $('#totalAmount').text(formatNumberWithDot(total)); // Usar la función de formato
+}
 
 $(document).ready(function () {
     let dataJson = []; // Aquí almacenamos el JSON
    
-    function calculateLevels(income) {
-        return levels.map(level => {
-            const discount = Math.min(income, level.limit) * level.rate;
-            return income - discount;
-        });
-    }
-
-    function updateTotalTable(total) {
-        const totNiveles = calculateLevels(total);
     
-        $("#total").text(formatNumberWithDot(total)); // Usar la función de formato
-    
-        totNiveles.forEach((value, index) => {
-            const levelCell = $(`#level${index + 1}`);
-            levelCell.text(formatNumberWithDot(value)); // Usar la función de formato
-    
-            // Aplicar color si excede el límite
-            if (total > levels[index].limit) {
-                levelCell.addClass('bg-danger');
-            } else {
-                levelCell.removeClass('bg-danger');
-            }
-        });
-    }
-
-    // Función para analizar la expresión y eliminar *1
-    function parseEquation(equation) {
-        const lines = equation.split('+'); // Dividir la expresión por el símbolo +
-        const parsedLines = [];
-
-        lines.forEach(line => {
-            const parts = line.split('*'); // Dividir por el símbolo *
-            if (parts.length === 2) {
-                const precioUnitario = parseFloat(parts[0].trim());
-                const cantidad = parseFloat(parts[1].trim());
-                if (isNaN(precioUnitario) || isNaN(cantidad)) {
-                    // Si alguno es NaN, asignamos 0
-                    parsedLines.push({
-                        precioUnitario: 0,
-                        cantidad: 0,
-                        totalProducto: 0
-                    });
-                } else {
-                    parsedLines.push({
-                        precioUnitario: precioUnitario,
-                        cantidad: cantidad,
-                        totalProducto: precioUnitario * cantidad
-                    });
-                }
-            } else if (parts.length === 1) {
-                const precioUnitario = parseFloat(parts[0].trim());
-                if (isNaN(precioUnitario)) {
-                    // Si es NaN, asignamos 0
-                    parsedLines.push({
-                        precioUnitario: 0,
-                        cantidad: 1,
-                        totalProducto: 0
-                    });
-                } else {
-                    parsedLines.push({
-                        precioUnitario: precioUnitario,
-                        cantidad: 1,
-                        totalProducto: precioUnitario
-                    });
-                }
-            }
-        });
-
-        return parsedLines;
-    }
-
-    // Función para generar la ecuación sin *1
-    function generateEquation() {
-        let equation = dataJson.map(item => {
-            // No mostrar *1 si la cantidad es 1
-            if (item.cantidad === 1) {
-                return `${item.precioUnitario}`;
-            } else {
-                return `${item.precioUnitario}*${item.cantidad}`;
-            }
-        }).join('+');
-
-        return equation;
-    }
-
-    function updateTable() {
-        $('#resultTable tbody').empty(); // Limpiar la tabla
-
-        dataJson.forEach(item => {
-            const row = $('<tr>')
-                .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.precioUnitario)}</td>`) // Usar la función de formato
-                .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.cantidad)}</td>`) // Usar la función de formato
-                .append(`<td>${formatNumberWithDot(item.totalProducto)}</td>`); // Usar la función de formato
-            $('#resultTable tbody').append(row);
-        });
-
-        // Actualizar la calculadora con la nueva ecuación
-        $('#calculatorInput').val(generateEquation());
-
-        // Actualizar el total
-        updateTotal();
-    }
-
     // Validación para que la tabla solo acepte números
     $(document).on('blur', '.editable', function () {
         const rowIndex = $(this).closest('tr').index();
@@ -145,17 +156,7 @@ $(document).ready(function () {
         updateTable(); // Refrescar la tabla y calculadora
     });
 
-    // Función para actualizar el total
-    function updateTotal() {
-        let total = 0;
-        dataJson.forEach(item => {
-            total += item.totalProducto;
-        });
-
-        updateTotalTable(total);
-
-        $('#totalAmount').text(formatNumberWithDot(total)); // Usar la función de formato
-    }
+   
 
     // Manejo de selección de niveles
     $('#levelSelect').on('change', function () {
