@@ -25,10 +25,35 @@
             <button class="btn btn-primary" id="exportCsv">Exportar a CSV</button>
         </div>
 
-        <!-- Calculadora -->
+        <!-- Calculadora con teclado -->
         <div class="mt-auto" style="height: 50%;">
             <div class="input-group mb-3">
-                <textarea id="calculatorInput" class="form-control" rows="6" placeholder="Ingrese la ecuación..."></textarea>
+                <textarea id="calculatorInput" class="form-control" rows="3" placeholder="Ingrese la ecuación..."></textarea>
+            </div>
+
+            <!-- Teclado de la calculadora -->
+            <div class="row text-center">
+                <button class="col btn btn-secondary calc-key" data-key="1">1</button>
+                <button class="col btn btn-secondary calc-key" data-key="2">2</button>
+                <button class="col btn btn-secondary calc-key" data-key="3">3</button>
+                <button class="col btn btn-secondary calc-key" data-key="+">+</button>
+            </div>
+            <div class="row text-center">
+                <button class="col btn btn-secondary calc-key" data-key="4">4</button>
+                <button class="col btn btn-secondary calc-key" data-key="5">5</button>
+                <button class="col btn btn-secondary calc-key" data-key="6">6</button>
+                <button class="col btn btn-secondary calc-key" data-key="*">*</button>
+            </div>
+            <div class="row text-center">
+                <button class="col btn btn-secondary calc-key" data-key="7">7</button>
+                <button class="col btn btn-secondary calc-key" data-key="8">8</button>
+                <button class="col btn btn-secondary calc-key" data-key="9">9</button>
+                <button class="col btn btn-secondary calc-key" data-key="0">0</button>
+            </div>
+            <div class="row text-center">
+                <button class="col btn btn-secondary calc-key" data-key="000">000</button>
+                <button class="col btn btn-warning calc-key" data-key="C">Borrar</button>
+                <button class="col btn btn-danger calc-key" data-key="CE">Borrar Todo</button>
             </div>
         </div>
     </div>
@@ -159,8 +184,12 @@
                 }
             });
 
-            // Exportar JSON a CSV
+            // Exportar JSON a CSV con nombre de archivo incluyendo la fecha
             $('#exportCsv').on('click', function () {
+                const date = new Date();
+                const formattedDate = `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+                const fileName = `compras-de-${formattedDate}.csv`;
+
                 let csv = 'Precio Unitario,Cantidad,Total Producto\n';
                 dataJson.forEach(item => {
                     csv += `${item.precioUnitario},${item.cantidad},${item.totalProducto}\n`;
@@ -170,10 +199,38 @@
                 const hiddenElement = document.createElement('a');
                 hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
                 hiddenElement.target = '_blank';
-                hiddenElement.download = 'data.csv';
+                hiddenElement.download = fileName;
                 hiddenElement.click();
+            });
+
+            // Manejo del teclado virtual
+            $(document).on('click', '.calc-key', function () {
+                const key = $(this).data('key');
+                let equation = $('#calculatorInput').val();
+
+                if (key === 'C') {
+                    // Borrar el último carácter
+                    equation = equation.slice(0, -1);
+                } else if (key === 'CE') {
+                    // Borrar todo
+                    equation = '';
+                } else if (key === '000') {
+                    // Agregar 000
+                    equation += '000';
+                } else {
+                    equation += key; // Agregar el número o operador al final
+                }
+
+                $('#calculatorInput').val(equation); // Actualizar el textarea
             });
         });
     </script>
+
+    <style>
+        .calc-key {
+            padding: 15px; /* Aumentar el padding para que los botones no estén tan pegados */
+            font-size: 1.5rem;
+        }
+    </style>
 </body>
 </html>
