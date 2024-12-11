@@ -1,3 +1,8 @@
+// Función para formatear los números con puntos como separadores de miles
+function formatNumberWithDot(number) {
+    return number.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 const levels = [
     { limit: 100000, rate: 0.10 },
     { limit: 200000, rate: 0.15 },
@@ -19,11 +24,11 @@ $(document).ready(function () {
     function updateTotalTable(total) {
         const totNiveles = calculateLevels(total);
     
-        $("#total").text(total.toLocaleString());
+        $("#total").text(formatNumberWithDot(total)); // Usar la función de formato
     
         totNiveles.forEach((value, index) => {
             const levelCell = $(`#level${index + 1}`);
-            levelCell.text(value.toLocaleString());
+            levelCell.text(formatNumberWithDot(value)); // Usar la función de formato
     
             // Aplicar color si excede el límite
             if (total > levels[index].limit) {
@@ -33,7 +38,6 @@ $(document).ready(function () {
             }
         });
     }
-    
 
     // Función para analizar la expresión y eliminar *1
     function parseEquation(equation) {
@@ -100,9 +104,9 @@ $(document).ready(function () {
 
         dataJson.forEach(item => {
             const row = $('<tr>')
-                .append(`<td contenteditable='true' class="editable">${item.precioUnitario.toLocaleString()}</td>`)
-                .append(`<td contenteditable='true' class="editable">${item.cantidad.toLocaleString()}</td>`)
-                .append(`<td>${item.totalProducto.toLocaleString()}</td>`);
+                .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.precioUnitario)}</td>`) // Usar la función de formato
+                .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.cantidad)}</td>`) // Usar la función de formato
+                .append(`<td>${formatNumberWithDot(item.totalProducto)}</td>`); // Usar la función de formato
             $('#resultTable tbody').append(row);
         });
 
@@ -148,7 +152,7 @@ $(document).ready(function () {
 
         updateTotalTable(total);
 
-        $('#totalAmount').text(total.toLocaleString()); // Mostrar el total sin decimales y con separador de miles
+        $('#totalAmount').text(formatNumberWithDot(total)); // Usar la función de formato
     }
 
     // Manejo de selección de niveles
