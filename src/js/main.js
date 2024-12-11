@@ -1,5 +1,54 @@
+const levels = [
+    { limit: 100000, rate: 0.10 },
+    { limit: 200000, rate: 0.15 },
+    { limit: 400000, rate: 0.20 },
+    { limit: 700000, rate: 0.30 },
+    { limit: 1000000, rate: 0.40 }
+];
+
 $(document).ready(function () {
     let dataJson = []; // Aquí almacenamos el JSON
+   
+    function calculateLevels(income) {
+        return levels.map(level => {
+            const discount = Math.min(income, level.limit) * level.rate;
+            return income - discount;
+        });
+    }
+
+    // Actualizar la tabla de resultados
+    function updateTotalTable(total) {
+        const levels = calculateLevels(total);
+        const limits = [100000, 200000, 400000, 700000, 1000000];
+
+        $("#total").text(total.toLocaleString());
+
+        levels.forEach((value, index) => {
+            const levelCell = $(`#level${index + 1}`);
+            levelCell.text(value.toLocaleString());
+
+            
+        });
+    }
+
+    function updateTotalTable(total) {
+        const levels = calculateLevels(total);
+    
+        $("#total").text(total.toLocaleString());
+    
+        levels.forEach((value, index) => {
+            const levelCell = $(`#level${index + 1}`);
+            levelCell.text(value.toLocaleString());
+    
+            // Aplicar color si excede el límite
+            if (total > limits[index]) {
+                levelCell.addClass('bg-danger');
+            } else {
+                levelCell.removeClass('bg-danger');
+            }
+        });
+    }
+    
 
     // Función para analizar la expresión y eliminar *1
     function parseEquation(equation) {
@@ -112,8 +161,24 @@ $(document).ready(function () {
             total += item.totalProducto;
         });
 
+        updateTotalTable(total);
+
         $('#totalAmount').text(total.toLocaleString()); // Mostrar el total sin decimales y con separador de miles
     }
+
+    // Manejo de selección de niveles
+    $('#levelSelect').on('change', function () {
+        const selectedLevel = $(this).val();
+
+        if (selectedLevel === 'all') {
+            $("#totalTable th, #totalTable td").show();
+        } else {
+            const levelIndex = parseInt(selectedLevel);
+            $("#totalTable th, #totalTable td").hide();
+            $("#totalTable th:nth-child(1), #totalTable td:nth-child(1)").show();
+            $("#totalTable th:nth-child(" + (levelIndex + 1) + "), #totalTable td:nth-child(" + (levelIndex + 1) + ")").show();
+        }
+    });
 
     // Detectar cambios en el textarea de la calculadora
     $('#calculatorInput').on('input', function () {
