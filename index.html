@@ -72,18 +72,36 @@
                     if (parts.length === 2) {
                         const precioUnitario = parseFloat(parts[0].trim());
                         const cantidad = parseFloat(parts[1].trim());
-                        parsedLines.push({
-                            precioUnitario: precioUnitario,
-                            cantidad: cantidad,
-                            totalProducto: precioUnitario * cantidad
-                        });
+                        if (isNaN(precioUnitario) || isNaN(cantidad)) {
+                            // Si alguno es NaN, asignamos 0
+                            parsedLines.push({
+                                precioUnitario: 0,
+                                cantidad: 0,
+                                totalProducto: 0
+                            });
+                        } else {
+                            parsedLines.push({
+                                precioUnitario: precioUnitario,
+                                cantidad: cantidad,
+                                totalProducto: precioUnitario * cantidad
+                            });
+                        }
                     } else if (parts.length === 1) {
                         const precioUnitario = parseFloat(parts[0].trim());
-                        parsedLines.push({
-                            precioUnitario: precioUnitario,
-                            cantidad: 1,
-                            totalProducto: precioUnitario
-                        });
+                        if (isNaN(precioUnitario)) {
+                            // Si es NaN, asignamos 0
+                            parsedLines.push({
+                                precioUnitario: 0,
+                                cantidad: 1,
+                                totalProducto: 0
+                            });
+                        } else {
+                            parsedLines.push({
+                                precioUnitario: precioUnitario,
+                                cantidad: 1,
+                                totalProducto: precioUnitario
+                            });
+                        }
                     }
                 });
 
@@ -125,12 +143,17 @@
                 const column = $(this).index();
                 const newValue = parseFloat($(this).text());
 
-                if (column === 0) {
-                    // Precio Unitario
-                    dataJson[rowIndex].precioUnitario = newValue;
-                } else if (column === 1) {
-                    // Cantidad
-                    dataJson[rowIndex].cantidad = newValue;
+                if (isNaN(newValue)) {
+                    // Si el valor es NaN, lo cambiamos a 0
+                    dataJson[rowIndex][column === 0 ? 'precioUnitario' : 'cantidad'] = 0;
+                } else {
+                    if (column === 0) {
+                        // Precio Unitario
+                        dataJson[rowIndex].precioUnitario = newValue;
+                    } else if (column === 1) {
+                        // Cantidad
+                        dataJson[rowIndex].cantidad = newValue;
+                    }
                 }
 
                 // Actualizar el total producto
@@ -142,6 +165,13 @@
             // Detectar cambios en el textarea de la calculadora
             $('#calculatorInput').on('input', function () {
                 let equation = $(this).val();
+
+                // Validar que solo sean números y los operadores + y *
+                if (/[^0-9+\-*]/.test(equation)) {
+                    // Si hay caracteres no permitidos, eliminarlos
+                    equation = equation.replace(/[^0-9+\-*]/g, '');
+                    $(this).val(equation); // Actualizar el valor del textarea
+                }
 
                 // Si el último carácter es un operador y no hay número después, agregar un valor predeterminado
                 if (equation.endsWith('+') || equation.endsWith('*')) {
