@@ -118,10 +118,10 @@
             $('#calculatorInput').on('input', function () {
                 let equation = $(this).val();
 
-                // Si el último carácter es un operador y no hay número después, agregar un valor predeterminado (0 o 1)
+                // Si el último carácter es un operador y no hay número después, agregar un valor predeterminado
                 if (equation.endsWith('+') || equation.endsWith('*')) {
                     if (equation.endsWith('*')) {
-                        equation += '1'; // Agregar 1 después de *
+                        equation += '0'; // Agregar 0 después de *
                     } else {
                         equation += '0'; // Agregar 0 después de +
                     }
@@ -142,19 +142,20 @@
                 }
             });
 
-            // Detectar cambios al escribir un número después de un operador
+            // Detectar cuando se borra el valor predeterminado
             $('#calculatorInput').on('blur', function () {
                 let equation = $(this).val();
                 const lastChar = equation[equation.length - 1];
 
-                // Si el último carácter es un operador y el siguiente es un número, quitar el valor predeterminado (0 o 1)
+                // Si el último carácter es un operador y el siguiente es un número, quitar el valor predeterminado (0)
                 if ((lastChar === '+' || lastChar === '*') && equation.length > 1) {
+                    // Si se está borrando el 0 después del operador, dejar solo el operador ( + o * )
                     if (lastChar === '*') {
-                        equation = equation.slice(0, -1) + '1'; // Reemplazar * con 1 si es por defecto
+                        equation = equation.slice(0, -1) + '*'; // Dejar solo *
                     } else {
-                        equation = equation.slice(0, -1) + '0'; // Reemplazar + con 0 si es por defecto
+                        equation = equation.slice(0, -1) + '+'; // Dejar solo +
                     }
-                    $(this).val(equation);
+                    $(this).val(equation); // Actualizar el valor del textarea
                 }
             });
 
