@@ -280,4 +280,20 @@ $(document).ready(function () {
             console.error('Error al procesar la ecuación:', e);
         }
     });
+    // Función para validar solo números y puntos mientras se escribe
+    $(document).on('input', '.editable', function() {
+        let value = $(this).text();
+
+        // Remover cualquier carácter que no sea número o punto
+        value = value.replace(/[^0-9.]/g, '');
+
+        // Si hay más de un punto, eliminar los puntos extra
+        const parts = value.split('.');
+        if (parts.length > 2) {
+            value = parts[0] + '.' + parts.slice(1).join('');
+        }
+
+        // Actualizar el contenido de la celda con el valor validado
+        $(this).text(value);
+    });
 });
