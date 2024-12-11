@@ -56,6 +56,11 @@
                 <button class="col btn btn-danger calc-key" data-key="CE">Borrar Todo</button>
             </div>
         </div>
+
+        <!-- Cálculo total en tiempo real (debajo del textarea) -->
+        <div class="text-muted mt-3">
+            <strong>Total: </strong><span id="totalAmount">0</span>
+        </div>
     </div>
 
     <script>
@@ -135,9 +140,12 @@
 
                 // Actualizar la calculadora con la nueva ecuación
                 $('#calculatorInput').val(generateEquation());
+
+                // Actualizar el total
+                updateTotal();
             }
 
-            // Actualiza el JSON cuando se haga un cambio en la tabla
+            // Validación para que la tabla solo acepte números
             $(document).on('blur', '.editable', function () {
                 const rowIndex = $(this).closest('tr').index();
                 const column = $(this).index();
@@ -161,6 +169,16 @@
 
                 updateTable(); // Refrescar la tabla y calculadora
             });
+
+            // Función para actualizar el total
+            function updateTotal() {
+                let total = 0;
+                dataJson.forEach(item => {
+                    total += item.totalProducto;
+                });
+
+                $('#totalAmount').text(total.toFixed(2)); // Actualiza el total con 2 decimales
+            }
 
             // Detectar cambios en el textarea de la calculadora
             $('#calculatorInput').on('input', function () {
@@ -252,15 +270,16 @@
                 }
 
                 $('#calculatorInput').val(equation); // Actualizar el textarea
+                // Actualizar la tabla y el total
+                try {
+                    const parsedLines = parseEquation(equation);
+                    dataJson = parsedLines;
+                    updateTable();
+                } catch (e) {
+                    console.error('Error al procesar la ecuación:', e);
+                }
             });
         });
     </script>
-
-    <style>
-        .calc-key {
-            padding: 15px; /* Aumentar el padding para que los botones no estén tan pegados */
-            font-size: 1.5rem;
-        }
-    </style>
 </body>
 </html>
