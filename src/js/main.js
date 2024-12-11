@@ -25,8 +25,6 @@ $(document).ready(function () {
             const levelCell = $(`#level${index + 1}`);
             levelCell.text(value.toLocaleString());
     
-            console.log(levels[index].limit)
-
             // Aplicar color si excede el límite
             if (total > levels[index].limit) {
                 levelCell.addClass('bg-danger');
