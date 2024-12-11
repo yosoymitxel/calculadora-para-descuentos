@@ -6,12 +6,45 @@
     <title>Calculadora con Tabla</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .calc-key {
+            margin: 0.15em;
+            background-color: #f1f1f1; /* Color más suave */
+            border: 1px solid #ccc;
+            color: #333;
+        }
+
+        .calc-key:hover {
+            background-color: #e0e0e0; /* Color de hover */
+        }
+
+        .calc-key:active {
+            background-color: #d0d0d0; /* Color de activación */
+        }
+
+        .container-fluid {
+            height: 100vh; /* Usar altura total de la ventana */
+        }
+
+        .table td {
+            text-align: right; /* Alinear los valores a la derecha */
+        }
+
+        .editable {
+            padding-right: 10px;
+        }
+
+        /* Evitar el uso de puntos durante la edición */
+        .editable[contenteditable="true"] {
+            text-align: right;
+        }
+    </style>
 </head>
 <body>
-    <div class="container-fluid h-100 d-flex flex-column">
+    <div class="container-fluid d-flex flex-column">
         <!-- Tabla de resultados -->
         <div class="table-responsive" style="height: 50%; overflow-y: auto;">
-            <table class="table table-bordered table-striped text-center" id="resultTable">
+            <table class="table table-bordered table-striped" id="resultTable">
                 <thead>
                     <tr>
                         <th>Precio Unitario</th>
@@ -30,7 +63,10 @@
             <div class="input-group mb-3">
                 <textarea id="calculatorInput" class="form-control" rows="3" placeholder="Ingrese la ecuación..."></textarea>
             </div>
-
+            <!-- Cálculo total en tiempo real (debajo del textarea) -->
+            <div class="text-muted mt-3">
+                <strong>Total: </strong><span id="totalAmount">0</span>
+            </div>
             <!-- Teclado de la calculadora -->
             <div class="row text-center">
                 <button class="col btn btn-secondary calc-key" data-key="1">1</button>
@@ -55,11 +91,6 @@
                 <button class="col btn btn-warning calc-key" data-key="C">Borrar</button>
                 <button class="col btn btn-danger calc-key" data-key="CE">Borrar Todo</button>
             </div>
-        </div>
-
-        <!-- Cálculo total en tiempo real (debajo del textarea) -->
-        <div class="text-muted mt-3">
-            <strong>Total: </strong><span id="totalAmount">0</span>
         </div>
     </div>
 
@@ -132,9 +163,9 @@
 
                 dataJson.forEach(item => {
                     const row = $('<tr>')
-                        .append(`<td contenteditable='true' class="editable">${item.precioUnitario}</td>`)
-                        .append(`<td contenteditable='true' class="editable">${item.cantidad}</td>`)
-                        .append(`<td>${item.totalProducto}</td>`);
+                        .append(`<td contenteditable='true' class="editable">${item.precioUnitario.toLocaleString()}</td>`)
+                        .append(`<td contenteditable='true' class="editable">${item.cantidad.toLocaleString()}</td>`)
+                        .append(`<td>${item.totalProducto.toLocaleString()}</td>`);
                     $('#resultTable tbody').append(row);
                 });
 
@@ -149,7 +180,8 @@
             $(document).on('blur', '.editable', function () {
                 const rowIndex = $(this).closest('tr').index();
                 const column = $(this).index();
-                const newValue = parseFloat($(this).text());
+                let newValue = $(this).text().replace(/\./g, ''); // Eliminar puntos para editar solo números
+                newValue = parseFloat(newValue.replace(',', '.')); // Convertir a número
 
                 if (isNaN(newValue)) {
                     // Si el valor es NaN, lo cambiamos a 0
@@ -177,7 +209,7 @@
                     total += item.totalProducto;
                 });
 
-                $('#totalAmount').text(total.toFixed(2)); // Actualiza el total con 2 decimales
+                $('#totalAmount').text(total.toLocaleString()); // Mostrar el total sin decimales y con separador de miles
             }
 
             // Detectar cambios en el textarea de la calculadora
@@ -232,27 +264,28 @@
                 }
             });
 
-            // Exportar JSON a CSV con nombre de archivo incluyendo la fecha
+            // Actualizar la tabla inicialmente
+            updateTable();
+
+            // Exportar CSV con nombre personalizado
             $('#exportCsv').on('click', function () {
                 const date = new Date();
-                const formattedDate = `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+                const formattedDate = date.toLocaleDateString('es-ES').split('/').reverse().join('-');
                 const fileName = `compras-de-${formattedDate}.csv`;
 
-                let csv = 'Precio Unitario,Cantidad,Total Producto\n';
+                let csvContent = "Precio Unitario,Cantidad,Total Producto\n";
                 dataJson.forEach(item => {
-                    csv += `${item.precioUnitario},${item.cantidad},${item.totalProducto}\n`;
+                    csvContent += `${item.precioUnitario},${item.cantidad},${item.totalProducto}\n`;
                 });
 
-                // Crear un enlace para descargar el archivo CSV
-                const hiddenElement = document.createElement('a');
-                hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
-                hiddenElement.target = '_blank';
-                hiddenElement.download = fileName;
-                hiddenElement.click();
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName;
+                link.click();
             });
-
-            // Manejo del teclado virtual
-            $(document).on('click', '.calc-key', function () {
+             // Manejo del teclado virtual
+             $(document).on('click', '.calc-key', function () {
                 const key = $(this).data('key');
                 let equation = $('#calculatorInput').val();
 
