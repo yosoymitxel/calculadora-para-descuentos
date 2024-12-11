@@ -6,319 +6,64 @@
     <title>Calculadora con Tabla</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        .calc-key {
-            margin: 0.15em;
-            background-color: #f1f1f1; /* Color más suave */
-            border: 1px solid #ccc;
-            color: #333;
-        }
-
-        .calc-key:hover {
-            background-color: #e0e0e0; /* Color de hover */
-        }
-
-        .calc-key:active {
-            background-color: #d0d0d0; /* Color de activación */
-        }
-
-        .container-fluid {
-            height: 100vh; /* Usar altura total de la ventana */
-        }
-
-        .table td {
-            text-align: right; /* Alinear los valores a la derecha */
-        }
-
-        .editable {
-            padding-right: 10px;
-        }
-
-        /* Evitar el uso de puntos durante la edición */
-        .editable[contenteditable="true"] {
-            text-align: right;
-        }
-    </style>
+    <link rel="stylesheet" href="src/css/main.css">
 </head>
 <body>
-    <div class="container-fluid d-flex flex-column">
+    <div class="container-fluid d-flex flex-column py-3">
         <!-- Tabla de resultados -->
-        <div class="table-responsive" style="height: 50%; overflow-y: auto;">
-            <table class="table table-bordered table-striped" id="resultTable">
-                <thead>
-                    <tr>
-                        <th>Precio Unitario</th>
-                        <th>Cantidad</th>
-                        <th>Total Producto</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+        <div class="table-responsive overflow-y-auto" >
+            <div class="overflow-y-auto">
+                <table class="table table-bordered table-striped" id="resultTable">
+                    <thead>
+                        <tr>
+                            <th>Precio Unitario</th>
+                            <th>Cantidad</th>
+                            <th>Total Producto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
             <button class="btn btn-primary" id="exportCsv">Exportar a CSV</button>
         </div>
 
         <!-- Calculadora con teclado -->
-        <div class="mt-auto" style="height: 50%;">
+        <div class="mt-auto">
             <div class="input-group mb-3">
                 <textarea id="calculatorInput" class="form-control" rows="3" placeholder="Ingrese la ecuación..."></textarea>
             </div>
             <!-- Cálculo total en tiempo real (debajo del textarea) -->
-            <div class="text-muted mt-3">
+            <div class="text-muted my-3">
                 <strong>Total: </strong><span id="totalAmount">0</span>
             </div>
             <!-- Teclado de la calculadora -->
-            <div class="row text-center">
+            <div class="row px-2 text-center">
                 <button class="col btn btn-secondary calc-key" data-key="1">1</button>
                 <button class="col btn btn-secondary calc-key" data-key="2">2</button>
                 <button class="col btn btn-secondary calc-key" data-key="3">3</button>
                 <button class="col btn btn-secondary calc-key" data-key="+">+</button>
             </div>
-            <div class="row text-center">
+            <div class="row px-2 text-center">
                 <button class="col btn btn-secondary calc-key" data-key="4">4</button>
                 <button class="col btn btn-secondary calc-key" data-key="5">5</button>
                 <button class="col btn btn-secondary calc-key" data-key="6">6</button>
                 <button class="col btn btn-secondary calc-key" data-key="*">*</button>
             </div>
-            <div class="row text-center">
+            <div class="row px-2 text-center">
                 <button class="col btn btn-secondary calc-key" data-key="7">7</button>
                 <button class="col btn btn-secondary calc-key" data-key="8">8</button>
                 <button class="col btn btn-secondary calc-key" data-key="9">9</button>
                 <button class="col btn btn-secondary calc-key" data-key="0">0</button>
             </div>
-            <div class="row text-center">
+            <div class="row px-2 text-center">
                 <button class="col btn btn-secondary calc-key" data-key="000">000</button>
-                <button class="col btn btn-warning calc-key" data-key="C">Borrar</button>
-                <button class="col btn btn-danger calc-key" data-key="CE">Borrar Todo</button>
+                <button class="col btn btn-warning calc-key bg-warning font-weight-bold" data-key="C">Borrar</button>
+                <button class="col btn btn-danger calc-key bg-danger font-weight-bold" data-key="CE">Borrar Todo</button>
             </div>
         </div>
     </div>
 
-    <script>
-        $(document).ready(function () {
-            let dataJson = []; // Aquí almacenamos el JSON
-    
-            // Función para analizar la expresión y eliminar *1
-            function parseEquation(equation) {
-                const lines = equation.split('+'); // Dividir la expresión por el símbolo +
-                const parsedLines = [];
-    
-                lines.forEach(line => {
-                    const parts = line.split('*'); // Dividir por el símbolo *
-                    if (parts.length === 2) {
-                        const precioUnitario = parseFloat(parts[0].trim());
-                        const cantidad = parseFloat(parts[1].trim());
-                        if (isNaN(precioUnitario) || isNaN(cantidad)) {
-                            // Si alguno es NaN, asignamos 0
-                            parsedLines.push({
-                                precioUnitario: 0,
-                                cantidad: 0,
-                                totalProducto: 0
-                            });
-                        } else {
-                            parsedLines.push({
-                                precioUnitario: precioUnitario,
-                                cantidad: cantidad,
-                                totalProducto: precioUnitario * cantidad
-                            });
-                        }
-                    } else if (parts.length === 1) {
-                        const precioUnitario = parseFloat(parts[0].trim());
-                        if (isNaN(precioUnitario)) {
-                            // Si es NaN, asignamos 0
-                            parsedLines.push({
-                                precioUnitario: 0,
-                                cantidad: 1,
-                                totalProducto: 0
-                            });
-                        } else {
-                            parsedLines.push({
-                                precioUnitario: precioUnitario,
-                                cantidad: 1,
-                                totalProducto: precioUnitario
-                            });
-                        }
-                    }
-                });
-    
-                return parsedLines;
-            }
-    
-            // Función para generar la ecuación sin *1
-            function generateEquation() {
-                let equation = dataJson.map(item => {
-                    // No mostrar *1 si la cantidad es 1
-                    if (item.cantidad === 1) {
-                        return `${item.precioUnitario}`;
-                    } else {
-                        return `${item.precioUnitario}*${item.cantidad}`;
-                    }
-                }).join('+');
-    
-                return equation;
-            }
-    
-            function updateTable() {
-                $('#resultTable tbody').empty(); // Limpiar la tabla
-    
-                dataJson.forEach(item => {
-                    const row = $('<tr>')
-                        .append(`<td contenteditable='true' class="editable">${item.precioUnitario.toLocaleString()}</td>`)
-                        .append(`<td contenteditable='true' class="editable">${item.cantidad.toLocaleString()}</td>`)
-                        .append(`<td>${item.totalProducto.toLocaleString()}</td>`);
-                    $('#resultTable tbody').append(row);
-                });
-    
-                // Actualizar la calculadora con la nueva ecuación
-                $('#calculatorInput').val(generateEquation());
-    
-                // Actualizar el total
-                updateTotal();
-            }
-    
-            // Validación para que la tabla solo acepte números
-            $(document).on('blur', '.editable', function () {
-                const rowIndex = $(this).closest('tr').index();
-                const column = $(this).index();
-                let newValue = $(this).text().replace(/\./g, ''); // Eliminar puntos para editar solo números
-                newValue = parseFloat(newValue.replace(',', '.')); // Convertir a número
-    
-                if (isNaN(newValue)) {
-                    // Si el valor es NaN, lo cambiamos a 0
-                    dataJson[rowIndex][column === 0 ? 'precioUnitario' : 'cantidad'] = 0;
-                } else {
-                    if (column === 0) {
-                        // Precio Unitario
-                        dataJson[rowIndex].precioUnitario = newValue;
-                    } else if (column === 1) {
-                        // Cantidad
-                        dataJson[rowIndex].cantidad = newValue;
-                    }
-                }
-    
-                // Actualizar el total producto
-                dataJson[rowIndex].totalProducto = dataJson[rowIndex].precioUnitario * dataJson[rowIndex].cantidad;
-    
-                updateTable(); // Refrescar la tabla y calculadora
-            });
-    
-            // Función para actualizar el total
-            function updateTotal() {
-                let total = 0;
-                dataJson.forEach(item => {
-                    total += item.totalProducto;
-                });
-    
-                $('#totalAmount').text(total.toLocaleString()); // Mostrar el total sin decimales y con separador de miles
-            }
-    
-            // Detectar cambios en el textarea de la calculadora
-            $('#calculatorInput').on('input', function () {
-                let equation = $(this).val();
-    
-                // Validar que solo sean números y los operadores + y *
-                if (/[^0-9+\-*]/.test(equation)) {
-                    // Si hay caracteres no permitidos, eliminarlos
-                    equation = equation.replace(/[^0-9+\-*]/g, '');
-                    $(this).val(equation); // Actualizar el valor del textarea
-                }
-    
-                // Si el último carácter es un operador y no hay número después, agregar un valor predeterminado
-                if (equation.endsWith('+') || equation.endsWith('*')) {
-                    if (equation.endsWith('*')) {
-                        equation += '0'; // Agregar 0 después de *
-                    } else {
-                        equation += '0'; // Agregar 0 después de +
-                    }
-                    $(this).val(equation); // Actualizar el valor del textarea
-                }
-    
-                if (!equation) return;
-    
-                try {
-                    // Analizar la ecuación y actualizar el JSON
-                    const parsedLines = parseEquation(equation);
-    
-                    // Actualizar el JSON con los nuevos cálculos
-                    dataJson = parsedLines;
-                    updateTable(); // Refrescar la tabla con los nuevos valores
-                } catch (e) {
-                    console.error('Error al procesar la ecuación:', e);
-                }
-            });
-    
-            // Detectar cuando se borra el valor predeterminado
-            $('#calculatorInput').on('blur', function () {
-                let equation = $(this).val();
-                const lastChar = equation[equation.length - 1];
-    
-                // Si el último carácter es un operador y el siguiente es un número, quitar el valor predeterminado (0)
-                if ((lastChar === '+' || lastChar === '*') && equation.length > 1) {
-                    // Si se está borrando el 0 después del operador, dejar solo el operador ( + o * )
-                    if (lastChar === '*') {
-                        equation = equation.slice(0, -1) + '*'; // Dejar solo *
-                    } else {
-                        equation = equation.slice(0, -1) + '+'; // Dejar solo +
-                    }
-                    $(this).val(equation); // Actualizar el valor del textarea
-                }
-            });
-    
-            // Actualizar la tabla inicialmente
-            updateTable();
-    
-            // Exportar CSV con nombre personalizado
-            $('#exportCsv').on('click', function () {
-                const date = new Date();
-                const formattedDate = date.toLocaleDateString('es-ES').split('/').reverse().join('-');
-                const fileName = `compras-de-${formattedDate}.csv`;
-    
-                let csvContent = "Precio Unitario,Cantidad,Total Producto\n";
-                dataJson.forEach(item => {
-                    csvContent += `${item.precioUnitario},${item.cantidad},${item.totalProducto}\n`;
-                });
-    
-                const blob = new Blob([csvContent], { type: 'text/csv' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = fileName;
-                link.click();
-            });
-    
-            // Manejo del teclado virtual
-            $(document).on('click', '.calc-key', function () {
-                const key = $(this).data('key');
-                let equation = $('#calculatorInput').val();
-    
-                if (key === 'C') {
-                    // Borrar el último carácter
-                    equation = equation.slice(0, -1);
-                } else if (key === 'CE') {
-                    // Borrar todo
-                    equation = '';
-                } else if (key === '000') {
-                    // Agregar 000
-                    equation += '000';
-                } else {
-                    equation += key; // Agregar el número o operador al final
-                }
-    
-                // Si el operador es * y no hay número después, agregar un 0
-                if (equation.endsWith('*') && !/[0-9]$/.test(equation)) {
-                    equation += '0'; // Agregar 0 después del *
-                }
-    
-                $('#calculatorInput').val(equation); // Actualizar el textarea
-                // Actualizar la tabla y el total
-                try {
-                    const parsedLines = parseEquation(equation);
-                    dataJson = parsedLines;
-                    updateTable();
-                } catch (e) {
-                    console.error('Error al procesar la ecuación:', e);
-                }
-            });
-        });
-    </script>
+    <script src="src/js/main.js"></script>
     </body>
 </html>

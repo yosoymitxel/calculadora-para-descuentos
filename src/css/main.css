@@ -1,0 +1,33 @@
+.calc-key {
+    margin: 0.15em;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    background-color: #f1f1f1; /* Color más suave */
+    border: 1px solid #ccc;
+    color: #333;
+}
+
+.calc-key:hover {
+    background-color: #e0e0e0; /* Color de hover */
+}
+
+.calc-key:active {
+    background-color: #d0d0d0; /* Color de activación */
+}
+
+.container-fluid {
+    height: 100vh; /* Usar altura total de la ventana */
+}
+
+.table td {
+    text-align: right; /* Alinear los valores a la derecha */
+}
+
+.editable {
+    padding-right: 10px;
+}
+
+/* Evitar el uso de puntos durante la edición */
+.editable[contenteditable="true"] {
+    text-align: right;
+}
