@@ -6,6 +6,9 @@ const levels = [
     { limit: 1000000, rate: 0.40 }
 ];
 
+var dataJson = []; // Aquí almacenamos el JSON
+
+
 // Función para formatear los números con puntos como separadores de miles
 function formatNumberWithDot(number) {
     return number.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -127,7 +130,6 @@ function updateTotal() {
 }
 
 $(document).ready(function () {
-    let dataJson = []; // Aquí almacenamos el JSON
    
     
     // Validación para que la tabla solo acepte números
