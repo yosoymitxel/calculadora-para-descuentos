@@ -284,7 +284,7 @@
                 link.download = fileName;
                 link.click();
             });
-
+    
             // Manejo del teclado virtual
             $(document).on('click', '.calc-key', function () {
                 const key = $(this).data('key');
@@ -303,6 +303,11 @@
                     equation += key; // Agregar el número o operador al final
                 }
     
+                // Si el operador es * y no hay número después, agregar un 0
+                if (equation.endsWith('*') && !/[0-9]$/.test(equation)) {
+                    equation += '0'; // Agregar 0 después del *
+                }
+    
                 $('#calculatorInput').val(equation); // Actualizar el textarea
                 // Actualizar la tabla y el total
                 try {
@@ -315,5 +320,5 @@
             });
         });
     </script>
-</body>
+    </body>
 </html>
