@@ -16,32 +16,19 @@ $(document).ready(function () {
         });
     }
 
-    // Actualizar la tabla de resultados
     function updateTotalTable(total) {
-        const levels = calculateLevels(total);
-        const limits = [100000, 200000, 400000, 700000, 1000000];
-
-        $("#total").text(total.toLocaleString());
-
-        levels.forEach((value, index) => {
-            const levelCell = $(`#level${index + 1}`);
-            levelCell.text(value.toLocaleString());
-
-            
-        });
-    }
-
-    function updateTotalTable(total) {
-        const levels = calculateLevels(total);
+        const totNiveles = calculateLevels(total);
     
         $("#total").text(total.toLocaleString());
     
-        levels.forEach((value, index) => {
+        totNiveles.forEach((value, index) => {
             const levelCell = $(`#level${index + 1}`);
             levelCell.text(value.toLocaleString());
     
+            console.log(levels[index].limit)
+
             // Aplicar color si excede el límite
-            if (total > limits[index]) {
+            if (total > levels[index].limit) {
                 levelCell.addClass('bg-danger');
             } else {
                 levelCell.removeClass('bg-danger');
