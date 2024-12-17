@@ -92,6 +92,36 @@ function generateLevelSelect() {
     $('#levelSelect').html(selectHtml);
 }
 
+function reglatres_calculate() {
+    const a = parseFloat($('#reglatres_a').val()) || 0;
+    const b = parseFloat($('#reglatres_b').val()) || 0;
+    const c = parseFloat($('#reglatres_c').val()) || 0;
+
+    if (a === 0) {
+        $('#reglatres_result').val('Error: A no puede ser cero');
+        return;
+    }
+
+    const result = (b * c) / a;
+    $('#reglatres_result').val(formatNumber(result));
+}
+
+function toggleCalculator() {
+    const $mainCalculator = $('#calculatorInput, .calc-key').parent();
+    const $reglaTresCalculator = $('#reglaTresCalculator');
+    const $toggleButton = $('#toggleCalculator');
+
+    if ($mainCalculator.is(':visible')) {
+        $mainCalculator.hide();
+        $reglaTresCalculator.show();
+        $toggleButton.text('Cambiar a Calculadora Principal');
+    } else {
+        $mainCalculator.show();
+        $reglaTresCalculator.hide();
+        $toggleButton.text('Cambiar a Regla de Tres');
+    }
+}
+
 $(document).ready(function() {
     generateLevelSelect();
 
@@ -163,5 +193,8 @@ $(document).ready(function() {
         topeUsado = parseFloat($(this).val()) || 0;
         updateTotal();
     });
+
+    $('#toggleCalculator').on('click', toggleCalculator);
+    $('#reglatres_a, #reglatres_b, #reglatres_c').on('input', reglatres_calculate);
 });
 
