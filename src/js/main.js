@@ -1,9 +1,12 @@
 const levels = [
-    { limit: 100000, rate: 0.10 },
-    { limit: 200000, rate: 0.15 },
-    { limit: 400000, rate: 0.20 },
-    { limit: 700000, rate: 0.30 },
-    { limit: 1000000, rate: 0.40 }
+    { category: 'General', name: 'Nivel 1', limit: 100000, rate: 0.10 },
+    { category: 'General', name: 'Nivel 2', limit: 200000, rate: 0.15 },
+    { category: 'General', name: 'Nivel 3', limit: 400000, rate: 0.20 },
+    { category: 'General', name: 'Nivel 4', limit: 700000, rate: 0.30 },
+    { category: 'General', name: 'Nivel 5', limit: 1000000, rate: 0.40 },
+    { category: 'Otros', name: 'Contimarket', limit: 1000000, rate: 0.35 },
+    { category: 'Otros', name: 'Tienda Naranja 20%', limit: 2000000, rate: 0.20 },
+    { category: 'Otros', name: 'Tienda Naranja 25%', limit: 2000000, rate: 0.25 }
 ];
 
 var dataJson = []; // Aquí almacenamos el JSON
@@ -129,8 +132,68 @@ function updateTotal() {
     $('#totalAmount').text(formatNumberWithDot(total)); // Usar la función de formato
 }
 
+
+// Elementos de la interfaz
+const levelSelect = $('#levelSelect');
+const totalTable = $('#totalTable');
+
+// Obtener categorías únicas
+function getCategories() {
+    return [...new Set(levels.map(level => level.category))];
+}
+
+// Generar el selector de niveles
+function generateLevelSelect() {
+    levelSelect.empty();
+    levelSelect.append('<option value="all">Todos</option>');
+    getCategories().forEach(category => {
+        levelSelect.append(`<option value="${category}">${category}</option>`);
+    });
+}
+
+// Generar tabla de niveles
+function generateTable(category) {
+    const filteredLevels = levels.filter(level => level.category === category);
+    if (filteredLevels.length === 0) return;
+
+    let tableHtml = `
+        <thead>
+            <tr>
+                <th>Nivel</th>
+                <th>Límite</th>
+                <th>Porcentaje</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    filteredLevels.forEach(level => {
+        tableHtml += `
+            <tr>
+                <td>${level.name}</td>
+                <td>${level.limit.toLocaleString('es-ES')}</td>
+                <td>${(level.rate * 100).toFixed(2)}%</td>
+            </tr>
+        `;
+    });
+
+    tableHtml += '</tbody>';
+    totalTable.html(tableHtml); // Actualizamos el contenido de la tabla
+}
+
+
 $(document).ready(function () {
-   
+   // Generamos dinámicamente el selector
+   generateLevelSelect();
+
+   // Al seleccionar una categoría, generamos la tabla correspondiente
+   levelSelect.on('change', function () {
+       const selectedCategory = $(this).val();
+       generateTable(selectedCategory);
+   });
+
+   // Mostrar la tabla de "General" por defecto
+   generateTable('General');
     
     // Validación para que la tabla solo acepte números
     $(document).on('blur', '.editable', function () {
