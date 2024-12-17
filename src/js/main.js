@@ -9,299 +9,123 @@ const levels = [
     { category: 'Otros', name: 'Tienda Naranja 25%', limit: 2000000, rate: 0.25 }
 ];
 
-var dataJson = []; // Aquí almacenamos el JSON
+let dataJson = [];
 
-
-// Función para formatear los números con puntos como separadores de miles
-function formatNumberWithDot(number) {
+function formatNumber(number) {
     return number.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-function calculateLevels(income) {
-    return levels.map(level => {
-        const discount = Math.min(income, level.limit) * level.rate;
-        return income - discount;
-    });
-}
-
-function updateTotalTable(total) {
-    const totNiveles = calculateLevels(total);
-
-    $("#total").text(formatNumberWithDot(total)); // Usar la función de formato
-
-    totNiveles.forEach((value, index) => {
-        const levelCell = $(`#level${index + 1}`);
-        levelCell.text(formatNumberWithDot(value)); // Usar la función de formato
-
-        // Aplicar color si excede el límite
-        if (total > levels[index].limit) {
-            levelCell.addClass('bg-danger');
-        } else {
-            levelCell.removeClass('bg-danger');
-        }
-    });
-}
-
-// Función para analizar la expresión y eliminar *1
 function parseEquation(equation) {
-    const lines = equation.split('+'); // Dividir la expresión por el símbolo +
-    const parsedLines = [];
-
-    lines.forEach(line => {
-        const parts = line.split('*'); // Dividir por el símbolo *
-        if (parts.length === 2) {
-            const precioUnitario = parseFloat(parts[0].trim());
-            const cantidad = parseFloat(parts[1].trim());
-            if (isNaN(precioUnitario) || isNaN(cantidad)) {
-                // Si alguno es NaN, asignamos 0
-                parsedLines.push({
-                    precioUnitario: 0,
-                    cantidad: 0,
-                    totalProducto: 0
-                });
-            } else {
-                parsedLines.push({
-                    precioUnitario: precioUnitario,
-                    cantidad: cantidad,
-                    totalProducto: precioUnitario * cantidad
-                });
-            }
-        } else if (parts.length === 1) {
-            const precioUnitario = parseFloat(parts[0].trim());
-            if (isNaN(precioUnitario)) {
-                // Si es NaN, asignamos 0
-                parsedLines.push({
-                    precioUnitario: 0,
-                    cantidad: 1,
-                    totalProducto: 0
-                });
-            } else {
-                parsedLines.push({
-                    precioUnitario: precioUnitario,
-                    cantidad: 1,
-                    totalProducto: precioUnitario
-                });
-            }
-        }
+    return equation.split('+').map(line => {
+        const [price, quantity = '1'] = line.split('*');
+        const parsedPrice = parseFloat(price.trim());
+        const parsedQuantity = parseFloat(quantity.trim());
+        return {
+            precioUnitario: isNaN(parsedPrice) ? 0 : parsedPrice,
+            cantidad: isNaN(parsedQuantity) ? 0 : parsedQuantity,
+            totalProducto: isNaN(parsedPrice) || isNaN(parsedQuantity) ? 0 : parsedPrice * parsedQuantity
+        };
     });
-
-    return parsedLines;
 }
 
-// Función para generar la ecuación sin *1
 function generateEquation() {
-    let equation = dataJson.map(item => {
-        // No mostrar *1 si la cantidad es 1
-        if (item.cantidad === 1) {
-            return `${item.precioUnitario}`;
-        } else {
-            return `${item.precioUnitario}*${item.cantidad}`;
-        }
-    }).join('+');
-
-    return equation;
+    return dataJson.map(item =>
+        item.cantidad === 1 ? `${item.precioUnitario}` : `${item.precioUnitario}*${item.cantidad}`
+    ).join('+');
 }
 
 function updateTable() {
-    $('#resultTable tbody').empty(); // Limpiar la tabla
-
+    $('#resultTable tbody').empty();
     dataJson.forEach(item => {
         const row = $('<tr>')
-            .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.precioUnitario)}</td>`) // Usar la función de formato
-            .append(`<td contenteditable='true' class="editable">${formatNumberWithDot(item.cantidad)}</td>`) // Usar la función de formato
-            .append(`<td>${formatNumberWithDot(item.totalProducto)}</td>`); // Usar la función de formato
+            .append(`<td contenteditable='true' class="editable">${formatNumber(item.precioUnitario)}</td>`)
+            .append(`<td contenteditable='true' class="editable">${formatNumber(item.cantidad)}</td>`)
+            .append(`<td>${formatNumber(item.totalProducto)}</td>`);
         $('#resultTable tbody').append(row);
     });
-
-    // Actualizar la calculadora con la nueva ecuación
     $('#calculatorInput').val(generateEquation());
-
-    // Actualizar el total
     updateTotal();
 }
 
- // Función para actualizar el total
 function updateTotal() {
-    let total = 0;
-    dataJson.forEach(item => {
-        total += item.totalProducto;
-    });
-
-    updateTotalTable(total);
-
-    $('#totalAmount').text(formatNumberWithDot(total)); // Usar la función de formato
+    const total = dataJson.reduce((sum, item) => sum + item.totalProducto, 0);
+    $('#totalAmount').text(formatNumber(total));
+    updateDiscountTable(total);
 }
 
+function updateDiscountTable(total) {
+    const selectedOption = $('#levelSelect').val();
+    const filteredLevels = selectedOption === 'all'
+        ? levels
+        : levels.filter(level => level.category === selectedOption.split('-')[1] || level.name === selectedOption);
 
-// Elementos de la interfaz
-const levelSelect = $('#levelSelect');
-const totalTable = $('#totalTable');
-
-// Obtener categorías únicas
-function getCategories() {
-    return [...new Set(levels.map(level => level.category))];
-}
-
-// Generar el selector de niveles
-function generateLevelSelect() {
-    levelSelect.empty();
-    levelSelect.append('<option value="all">Todos</option>');
-    getCategories().forEach(category => {
-        levelSelect.append(`<option value="${category}">${category}</option>`);
-    });
-}
-
-// Generar tabla de niveles
-function generateTable(category) {
-    const filteredLevels = levels.filter(level => level.category === category);
-    if (filteredLevels.length === 0) return;
-
-    let tableHtml = `
-        <thead>
-            <tr>
-                <th>Nivel</th>
-                <th>Límite</th>
-                <th>Porcentaje</th>
-            </tr>
-        </thead>
-        <tbody>
-    `;
-
+    let tableHtml = '';
     filteredLevels.forEach(level => {
+        const discount = Math.min(total, level.limit) * level.rate;
+        const finalAmount = total - discount;
         tableHtml += `
             <tr>
                 <td>${level.name}</td>
-                <td>${level.limit.toLocaleString('es-ES')}</td>
-                <td>${(level.rate * 100).toFixed(2)}%</td>
+                <td>${(level.rate * 100)}%</td>
+                <td>${formatNumber(finalAmount)}</td>
+                <td>${formatNumber(discount)}</td>
             </tr>
         `;
     });
-
-    tableHtml += '</tbody>';
-    totalTable.html(tableHtml); // Actualizamos el contenido de la tabla
+    $('#totalTable tbody').html(tableHtml);
 }
 
+function generateLevelSelect() {
+    const categories = [...new Set(levels.map(level => level.category))];
+    let selectHtml = '<option value="all">Todos</option>';
+    categories.forEach(category => {
+        selectHtml += `<optgroup label="${category}">`;
+        selectHtml += `<option value="all-${category}">Todos ${category}</option>`;
+        levels.filter(level => level.category === category).forEach(level => {
+            selectHtml += `<option value="${level.name}">${level.name}</option>`;
+        });
+        selectHtml += '</optgroup>';
+    });
+    $('#levelSelect').html(selectHtml);
+}
 
-$(document).ready(function () {
-   // Generamos dinámicamente el selector
-   generateLevelSelect();
+$(document).ready(function() {
+    generateLevelSelect();
 
-   // Al seleccionar una categoría, generamos la tabla correspondiente
-   levelSelect.on('change', function () {
-       const selectedCategory = $(this).val();
-       generateTable(selectedCategory);
-   });
+    $('#levelSelect').on('change', function() {
+        updateTotal();
+    });
 
-   // Mostrar la tabla de "General" por defecto
-   generateTable('General');
-    
-    // Validación para que la tabla solo acepte números
-    $(document).on('blur', '.editable', function () {
+    $('#calculatorInput').on('input', function() {
+        let equation = $(this).val().replace(/[^0-9+*]/g, '');
+        if (equation.endsWith('+') || equation.endsWith('*')) {
+            equation += '0';
+        }
+        $(this).val(equation);
+        dataJson = parseEquation(equation);
+        updateTable();
+    });
+
+    $(document).on('blur', '.editable', function() {
         const rowIndex = $(this).closest('tr').index();
         const column = $(this).index();
-        let newValue = $(this).text().replace(/\./g, ''); // Eliminar puntos para editar solo números
-        newValue = parseFloat(newValue.replace(',', '.')); // Convertir a número
+        let newValue = parseFloat($(this).text().replace(/\./g, '').replace(',', '.'));
 
         if (isNaN(newValue)) {
-            // Si el valor es NaN, lo cambiamos a 0
-            dataJson[rowIndex][column === 0 ? 'precioUnitario' : 'cantidad'] = 0;
-        } else {
-            if (column === 0) {
-                // Precio Unitario
-                dataJson[rowIndex].precioUnitario = newValue;
-            } else if (column === 1) {
-                // Cantidad
-                dataJson[rowIndex].cantidad = newValue;
-            }
+            newValue = 0;
         }
 
-        // Actualizar el total producto
+        dataJson[rowIndex][column === 0 ? 'precioUnitario' : 'cantidad'] = newValue;
         dataJson[rowIndex].totalProducto = dataJson[rowIndex].precioUnitario * dataJson[rowIndex].cantidad;
 
-        updateTable(); // Refrescar la tabla y calculadora
+        updateTable();
     });
 
-   
-
-    // Manejo de selección de niveles
-    $('#levelSelect').on('change', function () {
-        const selectedLevel = $(this).val();
-
-        if (selectedLevel === 'all') {
-            $("#totalTable th, #totalTable td").show();
-        } else {
-            const levelIndex = parseInt(selectedLevel);
-            $("#totalTable th, #totalTable td").hide();
-            $("#totalTable th:nth-child(1), #totalTable td:nth-child(1)").show();
-            $("#totalTable th:nth-child(" + (levelIndex + 1) + "), #totalTable td:nth-child(" + (levelIndex + 1) + ")").show();
-        }
-    });
-
-    // Detectar cambios en el textarea de la calculadora
-    $('#calculatorInput').on('input', function () {
-        let equation = $(this).val();
-
-        // Validar que solo sean números y los operadores + y *
-        if (/[^0-9+\-*]/.test(equation)) {
-            // Si hay caracteres no permitidos, eliminarlos
-            equation = equation.replace(/[^0-9+\-*]/g, '');
-            $(this).val(equation); // Actualizar el valor del textarea
-        }
-
-        // Si el último carácter es un operador y no hay número después, agregar un valor predeterminado
-        if (equation.endsWith('+') || equation.endsWith('*')) {
-            if (equation.endsWith('*')) {
-                equation += '0'; // Agregar 0 después de *
-            } else {
-                equation += '0'; // Agregar 0 después de +
-            }
-            $(this).val(equation); // Actualizar el valor del textarea
-        }
-
-        if (!equation) return;
-
-        try {
-            // Analizar la ecuación y actualizar el JSON
-            const parsedLines = parseEquation(equation);
-
-            // Actualizar el JSON con los nuevos cálculos
-            dataJson = parsedLines;
-            updateTable(); // Refrescar la tabla con los nuevos valores
-        } catch (e) {
-            console.error('Error al procesar la ecuación:', e);
-        }
-    });
-
-    // Detectar cuando se borra el valor predeterminado
-    $('#calculatorInput').on('blur', function () {
-        let equation = $(this).val();
-        const lastChar = equation[equation.length - 1];
-
-        // Si el último carácter es un operador y el siguiente es un número, quitar el valor predeterminado (0)
-        if ((lastChar === '+' || lastChar === '*') && equation.length > 1) {
-            // Si se está borrando el 0 después del operador, dejar solo el operador ( + o * )
-            if (lastChar === '*') {
-                equation = equation.slice(0, -1) + '*'; // Dejar solo *
-            } else {
-                equation = equation.slice(0, -1) + '+'; // Dejar solo +
-            }
-            $(this).val(equation); // Actualizar el valor del textarea
-        }
-    });
-
-    // Actualizar la tabla inicialmente
-    updateTable();
-
-    // Exportar CSV con nombre personalizado
-    $('#exportCsv').on('click', function () {
-        const date = new Date();
-        const formattedDate = date.toLocaleDateString('es-ES').split('/').reverse().join('-');
-        const fileName = `compras-de-${formattedDate}.csv`;
-
-        let csvContent = "Precio Unitario,Cantidad,Total Producto\n";
-        dataJson.forEach(item => {
-            csvContent += `${item.precioUnitario},${item.cantidad},${item.totalProducto}\n`;
-        });
+    $('#exportCsv').on('click', function() {
+        const date = new Date().toISOString().split('T')[0];
+        const fileName = `compras-de-${date}.csv`;
+        let csvContent = "Precio Unitario,Cantidad,Total Producto\n" +
+            dataJson.map(item => `${item.precioUnitario},${item.cantidad},${item.totalProducto}`).join("\n");
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const link = document.createElement('a');
@@ -310,37 +134,24 @@ $(document).ready(function () {
         link.click();
     });
 
-    // Manejo del teclado virtual
-    $(document).on('click', '.calc-key', function () {
+    $('.calc-key').on('click', function() {
         const key = $(this).data('key');
         let equation = $('#calculatorInput').val();
 
         if (key === 'C') {
-            // Borrar el último carácter
             equation = equation.slice(0, -1);
         } else if (key === 'CE') {
-            // Borrar todo
             equation = '';
-        } else if (key === '000') {
-            // Agregar 000
-            equation += '000';
         } else {
-            equation += key; // Agregar el número o operador al final
+            equation += key;
         }
 
-        // Si el operador es * y no hay número después, agregar un 0
         if (equation.endsWith('*') && !/[0-9]$/.test(equation)) {
-            equation += '0'; // Agregar 0 después del *
+            equation += '0';
         }
 
-        $('#calculatorInput').val(equation); // Actualizar el textarea
-        // Actualizar la tabla y el total
-        try {
-            const parsedLines = parseEquation(equation);
-            dataJson = parsedLines;
-            updateTable();
-        } catch (e) {
-            console.error('Error al procesar la ecuación:', e);
-        }
+        $('#calculatorInput').val(equation).trigger('input');
     });
+
+    updateTable();
 });
