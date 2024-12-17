@@ -14,13 +14,12 @@
             <div>
                 <label for="levelSelect" class="form-label">Seleccionar Nivel:</label>
                 <select id="levelSelect" class="form-select">
-                    <option value="all" selected>Todos</option>
-                    <option value="1">Nivel 1</option>
-                    <option value="2">Nivel 2</option>
-                    <option value="3">Nivel 3</option>
-                    <option value="4">Nivel 4</option>
-                    <option value="5">Nivel 5</option>
+
                 </select>
+                <div class="mt-2">
+                    <label for="topeUsadoInput" class="form-label">Tope usado hasta ahora:</label>
+                    <input type="number" id="topeUsadoInput" class="form-control" value="0" min="0">
+                </div>
             </div>
             <div class="table-responsive" style="width: 70%;">
                 <table class="table table-bordered table-striped" id="totalTable">

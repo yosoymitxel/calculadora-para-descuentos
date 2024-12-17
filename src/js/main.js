@@ -10,6 +10,7 @@ const levels = [
 ];
 
 let dataJson = [];
+let topeUsado = 0;
 
 function formatNumber(number) {
     return number.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -61,11 +62,12 @@ function updateDiscountTable(total) {
 
     let tableHtml = '';
     filteredLevels.forEach(level => {
-        const discount = Math.min(total, level.limit) * level.rate;
+        const availableLimit = Math.max(level.limit - topeUsado, 0);
+        const discount = Math.min(total, availableLimit) * level.rate;
         const finalAmount = total - discount;
-        const exceedsLimit = total > level.limit;
+        const exceedsLimit = total > availableLimit;
         tableHtml += `
-            <tr>
+            <tr >
                 <td>${level.name}</td>
                 <td>${(level.rate * 100)}%</td>
                 <td ${exceedsLimit ? 'class="bg-danger"' : ''}>${formatNumber(finalAmount)}</td>
@@ -96,7 +98,6 @@ $(document).ready(function() {
     $('#levelSelect').on('change', function() {
         updateTotal();
     });
-
 
     $('#calculatorInput').on('input', function() {
         let equation = $(this).val().replace(/[^0-9+*]/g, '');
@@ -156,7 +157,11 @@ $(document).ready(function() {
     });
 
     $('#levelSelect').val('all-General').trigger('change');
-
     updateTable();
+
+    $('#topeUsadoInput').on('input', function() {
+        topeUsado = parseFloat($(this).val()) || 0;
+        updateTotal();
+    });
 });
 
