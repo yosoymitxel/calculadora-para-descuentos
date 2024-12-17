@@ -114,11 +114,11 @@ function toggleCalculator() {
     if ($mainCalculator.is(':visible')) {
         $mainCalculator.hide();
         $reglaTresCalculator.show();
-        $toggleButton.text('Cambiar a Calculadora Principal');
+        $toggleButton.html('<i class="fas fa-calculator"></i>');
     } else {
         $mainCalculator.show();
         $reglaTresCalculator.hide();
-        $toggleButton.text('Cambiar a Regla de Tres');
+        $toggleButton.html('<i class="fas fa-balance-scale"></i>');
     }
 }
 
