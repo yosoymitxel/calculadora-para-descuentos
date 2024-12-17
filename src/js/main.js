@@ -63,11 +63,12 @@ function updateDiscountTable(total) {
     filteredLevels.forEach(level => {
         const discount = Math.min(total, level.limit) * level.rate;
         const finalAmount = total - discount;
+        const exceedsLimit = total > level.limit;
         tableHtml += `
             <tr>
                 <td>${level.name}</td>
                 <td>${(level.rate * 100)}%</td>
-                <td>${formatNumber(finalAmount)}</td>
+                <td ${exceedsLimit ? 'class="bg-danger"' : ''}>${formatNumber(finalAmount)}</td>
                 <td>${formatNumber(discount)}</td>
             </tr>
         `;
@@ -95,6 +96,7 @@ $(document).ready(function() {
     $('#levelSelect').on('change', function() {
         updateTotal();
     });
+
 
     $('#calculatorInput').on('input', function() {
         let equation = $(this).val().replace(/[^0-9+*]/g, '');
@@ -153,5 +155,8 @@ $(document).ready(function() {
         $('#calculatorInput').val(equation).trigger('input');
     });
 
+    $('#levelSelect').val('all-General').trigger('change');
+
     updateTable();
 });
+
