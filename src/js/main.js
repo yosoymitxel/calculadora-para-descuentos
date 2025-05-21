@@ -1,7 +1,7 @@
 const levels = [
     { category: 'General', name: 'Nivel 1', limit: 100000, rate: 0.10 },
     { category: 'General', name: 'Nivel 2', limit: 200000, rate: 0.15 },
-    { category: 'General', name: 'Nivel 3', limit: 400000, rate: 0.20 },
+    { category: 'General', name: 'Nivel 3', limit: 400000, rate: 0.25 },
     { category: 'General', name: 'Nivel 4', limit: 700000, rate: 0.30 },
     { category: 'General', name: 'Nivel 5', limit: 1000000, rate: 0.40 },
     { category: 'Otros', name: 'Contimarket', limit: 1000000, rate: 0.35 },
