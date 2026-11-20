@@ -113,7 +113,7 @@ const makeDefaultItems = function () {
 };
 const DEFAULT_ITEMS = makeDefaultItems();
 const defaultState = function () {
-  return { version: 1, theme: 'dark', themeUpdatedAt: 0, updatedAt: 0, items: DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); }), calculatorLines: [], calculatorStore: '', priceHistory: [] };
+  return { version: 1, theme: 'light', themeUpdatedAt: 0, updatedAt: 0, items: DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); }), calculatorLines: [], calculatorStore: '', priceHistory: [] };
 };
 const normalizeState = function (raw) {
   const source = raw && typeof raw === 'object' ? raw : {};
@@ -144,7 +144,7 @@ const normalizeState = function (raw) {
   });
   return {
     version: 1,
-    theme: source.theme === 'light' ? 'light' : 'dark',
+    theme: source.theme === 'dark' ? 'dark' : 'light',
     themeUpdatedAt: Number(source.themeUpdatedAt) || 0,
     updatedAt: Number(source.updatedAt) || 0,
     items: items,
@@ -205,7 +205,7 @@ const showToast = function (message) {
 const setSyncStatus = function (mode) {
   const element = $('syncStatus');
   if (!element) return;
-  element.classList.remove('synced', 'syncing');
+  element.classList.remove('synced', 'syncing', 'error');
   if (mode === 'synced') {
     element.textContent = 'Sincronizado';
     element.classList.add('synced');
@@ -213,12 +213,13 @@ const setSyncStatus = function (mode) {
     element.textContent = 'Sincronizando';
     element.classList.add('syncing');
   } else if (mode === 'error') {
-    element.textContent = 'Error de nube';
+    element.textContent = 'Sin conexión';
+    element.classList.add('error');
   } else if (mode === 'account') {
-    element.textContent = 'Cuenta activa';
+    element.textContent = 'Cuenta';
     element.classList.add('synced');
   } else {
-    element.textContent = 'Este dispositivo';
+    element.textContent = 'Local';
   }
 };
 const getLastPrice = function (itemId) {
@@ -227,21 +228,41 @@ const getLastPrice = function (itemId) {
 };
 
 /* ---------------------------------------------------------
-   Lista: cada post-it es un grupo completo de productos
+   Lista: grupos plegables en masonry
    --------------------------------------------------------- */
+const SHORT_GROUPS = {
+  'Carnes, congelados y proteínas': 'Carnes y congelados',
+  'Pastas, arroz y legumbres': 'Pastas y arroz',
+  'Desayuno, bebidas y snacks': 'Desayuno y snacks',
+  'Conservas y básicos': 'Conservas',
+  'Harinas y repostería': 'Harinas',
+  'Salsas y aderezos': 'Salsas',
+  'Limpieza del hogar': 'Limpieza',
+  'Higiene personal': 'Higiene',
+  'Descartables y cocina': 'Cocina',
+  'Hogar y ferretería': 'Hogar'
+};
+const openGroupNames = new Set();
+let listInitialized = false;
+const shortGroup = function (name) { return SHORT_GROUPS[name] || name; };
+const countLabel = function (count, singular, plural) {
+  return count + ' ' + (count === 1 ? singular : plural);
+};
+const ICON_FLAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 0h11l-2 3 2 3H5"></path></svg>';
+const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3z"></path></svg>';
 const renderItem = function (item) {
   const last = getLastPrice(item.id);
   const priceHint = last
-    ? '<span class="product-price-hint">Último: <strong>' + escapeHTML(formatMoney(last.finalUnitPrice || last.total)) + '</strong>' + (last.supermarket ? ' · ' + escapeHTML(last.supermarket) : '') + '</span>'
-    : '<span class="product-price-hint">Sin precio registrado</span>';
+    ? '<span class="product-price-hint"><strong>' + escapeHTML(formatMoney(last.finalUnitPrice || last.total)) + '</strong>' + (last.supermarket ? ' · ' + escapeHTML(last.supermarket) : '') + '</span>'
+    : '';
   return '<article class="product-row' + (item.checked ? ' is-done' : '') + '" data-item-id="' + escapeHTML(item.id) + '">' +
     '<label class="product-check"><input type="checkbox" data-check="' + escapeHTML(item.id) + '" ' + (item.checked ? 'checked' : '') + ' aria-label="Marcar ' + escapeHTML(item.name) + ' como comprado"></label>' +
-    '<button class="product-main" type="button" data-open-calculator="' + escapeHTML(item.id) + '">' +
+    '<button class="product-main" type="button" data-open-calculator="' + escapeHTML(item.id) + '" title="' + escapeHTML(item.name) + '">' +
       '<span class="product-name">' + escapeHTML(item.name) + '</span>' + priceHint +
     '</button>' +
     '<div class="product-actions">' +
-      '<button class="tag-button" type="button" data-priority="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.priority) + '">Prioridad</button>' +
-      '<button class="tag-button preferred" type="button" data-preferred="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.preferred) + '">Super preferido</button>' +
+      '<button class="tag-button priority" type="button" data-priority="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.priority) + '" aria-label="Prioridad: ' + escapeHTML(item.name) + '" title="Prioridad">' + ICON_FLAG + '<span class="tag-label">Prioridad</span></button>' +
+      '<button class="tag-button preferred" type="button" data-preferred="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.preferred) + '" aria-label="Preferido: ' + escapeHTML(item.name) + '" title="Preferido">' + ICON_STAR + '<span class="tag-label">Preferido</span></button>' +
     '</div></article>';
 };
 const renderList = function () {
@@ -256,32 +277,43 @@ const renderList = function () {
       (activeFilter === 'priority' && item.priority);
     return matchesText && matchesFilter;
   });
-  const complete = state.items.filter(function (item) { return item.checked; }).length;
+  const checkedTotal = state.items.filter(function (item) { return item.checked; }).length;
   const total = state.items.length;
-  $('progressNumber').textContent = complete + '/' + total;
-  $('progressText').textContent = complete === total ? 'Lista completa' : (total - complete) + ' productos pendientes';
-  $('progressBar').style.width = (total ? (complete / total) * 100 : 0) + '%';
-  $('resultCount').textContent = filtered.length + ' productos';
-  $('summaryHint').textContent = query ? 'Resultados para «' + $('searchInput').value.trim() + '»' : 'Tocá un producto para abrir la calculadora';
+  const pending = total - checkedTotal;
+  $('progressNumber').textContent = checkedTotal + '/' + total;
+  $('progressText').textContent = pending === 0 ? 'Lista completa' : countLabel(pending, 'pendiente', 'pendientes');
+  $('progressBar').style.width = (total ? (checkedTotal / total) * 100 : 0) + '%';
+  let resultLabel = countLabel(filtered.length, 'producto', 'productos');
+  if (query) resultLabel = countLabel(filtered.length, 'resultado', 'resultados');
+  else if (activeFilter === 'pending') resultLabel = countLabel(filtered.length, 'pendiente', 'pendientes');
+  else if (activeFilter === 'priority') resultLabel = filtered.length + ' con prioridad';
+  else if (activeFilter === 'done') resultLabel = countLabel(filtered.length, 'comprado', 'comprados');
+  $('resultCount').textContent = resultLabel;
+
   const groups = DEFAULT_GROUPS.map(function (group) { return group.name; });
   state.items.forEach(function (item) { if (!groups.includes(item.group)) groups.push(item.group); });
-  const html = groups.map(function (groupName, groupIndex) {
+  if (!listInitialized) {
+    listInitialized = true;
+    if (window.matchMedia('(min-width: 700px)').matches) groups.forEach(function (name) { openGroupNames.add(name); });
+  }
+  const forceOpen = !!query || activeFilter !== 'all';
+  const html = groups.map(function (groupName) {
     const items = filtered.filter(function (item) { return item.group === groupName; });
     if (!items.length) return '';
     const doneCount = items.filter(function (item) { return item.checked; }).length;
-    const priorityCount = items.filter(function (item) { return item.priority; }).length;
-    return '<article class="postit-group postit-tone-' + (groupIndex % 4) + '" data-group="' + escapeHTML(groupName) + '">' +
-      '<header class="postit-head"><div class="postit-title-wrap"><h2>' + escapeHTML(groupName) + '</h2><span class="postit-count">' + items.length + '</span></div>' +
-      '<span class="postit-progress">' + doneCount + '/' + items.length + ' listos</span></header>' +
+    const isOpen = forceOpen || openGroupNames.has(groupName);
+    const isComplete = items.length > 0 && doneCount === items.length;
+    return '<details class="postit-group' + (isComplete ? ' is-complete' : '') + '" data-group="' + escapeHTML(groupName) + '"' + (isOpen ? ' open' : '') + '>' +
+      '<summary class="postit-head"><span class="postit-title-wrap"><h2>' + escapeHTML(shortGroup(groupName)) + '</h2></span>' +
+      '<span class="postit-progress">' + doneCount + '/' + items.length + '</span></summary>' +
       '<div class="postit-items">' + items.map(renderItem).join('') + '</div>' +
-      (priorityCount ? '<footer class="postit-foot">' + priorityCount + ' con prioridad</footer>' : '') +
-    '</article>';
+    '</details>';
   }).join('');
-  container.innerHTML = html || '<div class="empty-state">No hay productos que coincidan con la búsqueda o el filtro.</div>';
+  container.innerHTML = html || '<div class="empty-state">No hay productos que coincidan.</div>';
   const productOptions = $('shoppingProductOptions');
   if (productOptions) productOptions.innerHTML = state.items.map(function (item) { return '<option value="' + escapeHTML(item.name) + '"></option>'; }).join('');
   $('historyCount').textContent = state.priceHistory.length + (state.priceHistory.length === 1 ? ' registro' : ' registros');
-  $('clearDone').hidden = complete === 0;
+  $('listFooter').hidden = checkedTotal === 0;
   setSyncStatus(session ? 'account' : 'local');
 };
 const touchState = function () {
@@ -338,14 +370,29 @@ $('clearDone').addEventListener('click', function () {
     if (item.checked) Object.assign(item, { checked: false, updatedAt: now });
   });
   touchState();
-  showToast('Productos desmarcados');
+  showToast('Comprados desmarcados');
 });
+$('listContainer').addEventListener('toggle', function (event) {
+  const group = event.target.closest('details.postit-group');
+  if (!group) return;
+  if (group.open) openGroupNames.add(group.dataset.group);
+  else openGroupNames.delete(group.dataset.group);
+}, true);
 
 /* ---------------------------------------------------------
    Navegación y tema
    --------------------------------------------------------- */
+let activeView = 'list';
+const viewScroll = { list: 0, calculator: 0, profile: 0 };
 const setView = function (name) {
   const view = ['list', 'calculator', 'profile'].includes(name) ? name : 'list';
+  if (view === activeView) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  viewScroll[activeView] = window.scrollY;
+  activeView = view;
+  if (view !== 'calculator') returnToListAfterAdd = false;
   $('listView').hidden = view !== 'list';
   $('profileView').hidden = view !== 'profile';
   $('calculatorView').hidden = view !== 'calculator';
@@ -360,22 +407,25 @@ const setView = function (name) {
     else button.removeAttribute('aria-current');
   });
   if (view === 'calculator') renderCalculator();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo(0, viewScroll[view] || 0);
 };
 const openCalculatorForItem = function (itemId) {
   const item = state.items.find(function (entry) { return entry.id === itemId; });
   if (!item) return;
+  returnToListAfterAdd = true;
+  viewScroll.calculator = 0;
   selectedItemId = itemId;
   const previous = state.calculatorLines.find(function (line) { return line.itemId === itemId; });
   const last = getLastPrice(itemId);
   $('calcProductName').value = item.name;
-  $('calcProductGroup').textContent = item.group;
+  $('calcProductGroup').textContent = shortGroup(item.group);
+  $('calcProductGroup').hidden = false;
   $('calcUnitPrice').value = previous ? String(previous.unitPrice) : last ? String(last.unitPrice || '') : '';
   $('calcQuantity').value = previous ? String(previous.quantity || 1) : last ? String(last.quantity || 1) : '1';
   $('calcLastPrice').textContent = last
-    ? 'Último precio guardado: ' + formatMoney(last.finalUnitPrice || last.total) + ' · ' + (last.supermarket || 'sin supermercado') + ' · ' + (last.date || '')
-    : 'Producto asociado a tu lista. Ingresá precio y cantidad para sumarlo.';
-  $('addCalcItem').textContent = previous ? 'Actualizar en la compra' : 'Agregar a la compra';
+    ? 'Último: ' + formatMoney(last.finalUnitPrice || last.total) + (last.supermarket ? ' · ' + last.supermarket : '')
+    : '';
+  $('addCalcItem').textContent = previous ? 'Actualizar' : 'Agregar';
   if (item.preferredStore) {
     let option = Array.from($('storeSelect').options).find(function (entry) {
       return normalize(entry.value) === normalize(item.preferredStore);
@@ -400,7 +450,10 @@ document.querySelectorAll('[data-view]').forEach(function (button) {
   button.addEventListener('click', function () { setView(button.dataset.view); });
 });
 const applyTheme = function () {
-  document.documentElement.dataset.theme = state.theme === 'light' ? 'light' : 'dark';
+  const theme = state.theme === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'light' ? '#f1ecfa' : '#130f1c');
   document.querySelectorAll('[data-theme-choice]').forEach(function (button) {
     const active = button.dataset.themeChoice === state.theme;
     button.classList.toggle('active', active);
@@ -432,6 +485,7 @@ const LEGACY_LEVELS = [
 let promotions = [];
 let promoLoadedAt = 0;
 let selectedItemId = '';
+let returnToListAfterAdd = false;
 const stateLineChanged = function () {
   state.updatedAt = Math.max(Date.now(), (Number(state.updatedAt) || 0) + 1);
   persistLocal();
@@ -473,7 +527,16 @@ const isSupermarketPromo = function (promo) {
     normalize([promo && promo.title, promo && promo.desc].join(' ')).includes('mayorista');
 };
 const promotionStore = function (promo) {
-  return String(promo && (promo.title || promo.supermarket || promo.commerce || promo.store) || 'Supermercado').trim();
+  const explicit = String(promo && (promo.supermarket || promo.commerce || promo.store) || '').trim();
+  if (explicit) return explicit;
+  let title = String(promo && promo.title || '').trim();
+  title = title.replace(/\s*[-–—]\s*(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)[^-–—]*$/i, '');
+  title = title.replace(/\s+desde\s+el\s+\w+$/i, '');
+  title = title.replace(/^\s*\d{1,2}(?:[.,]\d+)?\s*%\s*/i, '');
+  title = title.replace(/reintegro|descuento|dto|off|cashback|dscto/gi, ' ');
+  title = title.replace(/\s+/g, ' ').trim();
+  if (!title || /^supermercados?$/i.test(title)) return 'Supermercado';
+  return title;
 };
 const promotionBankLabel = function (promo) {
   return String(promo && (promo.bankShort || promo.bankId || 'Banco'));
@@ -500,13 +563,13 @@ const updatePromoStatus = function (mode) {
   const element = $('promoStatus');
   element.classList.remove('good');
   if (mode === 'live') {
-    element.textContent = promotions.length + ' descuentos · PromoScraper PY';
+    element.textContent = 'Ofertas al día';
     element.classList.add('good');
   } else if (mode === 'cached') {
-    element.textContent = promotions.length + ' descuentos · copia local';
+    element.textContent = promotions.length ? 'Ofertas guardadas' : 'Sin ofertas';
     element.classList.add('good');
   } else {
-    element.textContent = 'Promociones no disponibles';
+    element.textContent = 'Sin ofertas';
   }
 };
 const populateStoreSelect = function () {
@@ -516,7 +579,7 @@ const populateStoreSelect = function () {
     .map(function (promo) { return [normalize(promotionStore(promo)), promotionStore(promo)]; })
   ).values()).sort(function (a, b) { return a.localeCompare(b); });
   if (current && !names.some(function (name) { return normalize(name) === normalize(current); })) names.push(current);
-  $('storeSelect').innerHTML = '<option value="">Todos los supermercados</option>' + names.map(function (name) {
+  $('storeSelect').innerHTML = '<option value="">Todos</option>' + names.map(function (name) {
     return '<option value="' + escapeHTML(name) + '">' + escapeHTML(name) + '</option>';
   }).join('');
   if (names.some(function (name) { return normalize(name) === normalize(current); })) $('storeSelect').value = names.find(function (name) { return normalize(name) === normalize(current); });
@@ -546,8 +609,8 @@ const loadPromotions = async function () {
   } catch (error) {
     updatePromoStatus(promotions.length ? 'cached' : 'error');
     $('promoDescription').textContent = promotions.length
-      ? 'No se pudo actualizar PromoScraper. Se conserva la última copia local.'
-      : 'No se pudieron cargar las promociones. Podés usar los niveles originales o ingresar un descuento manual.';
+      ? 'No se pudieron actualizar las ofertas.'
+      : 'No se pudieron cargar las ofertas. Usá el descuento manual.';
     renderDiscountTable();
   }
 };
@@ -559,7 +622,7 @@ const populateDiscountSelect = function () {
     const key = promotionBankLabel(entry.promo);
     (groups[key] ||= []).push(entry);
   });
-  let html = '<option value="all">Comparar todos los descuentos</option>';
+  let html = '<option value="all">Comparar todos</option>';
   if (offers.length) {
     html += '<optgroup label="Promociones del supermercado">';
     Object.keys(groups).sort().forEach(function (bank) {
@@ -627,19 +690,23 @@ const generateEquation = function () {
 };
 const renderCartTable = function () {
   const lines = state.calculatorLines;
-  $('calcLineCount').textContent = lines.length + (lines.length === 1 ? ' producto' : ' productos');
+  const empty = lines.length === 0;
+  $('calcLineCount').textContent = countLabel(lines.length, 'producto', 'productos');
   $('calcLinesBody').innerHTML = lines.length ? lines.map(function (line) {
     const subtotal = (Number(line.unitPrice) || 0) * (Number(line.quantity) || 1);
-    const linked = !!line.itemId;
-    return '<tr data-line-id="' + escapeHTML(line.id) + '">' +
-      '<td><span class="cart-product-name">' + escapeHTML(line.product || 'Producto libre') + '</span>' +
-        (linked ? '<small class="linked-label">Vinculado a la lista</small>' : '<small class="free-label">Producto libre</small>') + '</td>' +
-      '<td><input class="table-input" type="number" min="0" step="1" inputmode="numeric" data-edit-price="' + escapeHTML(line.id) + '" value="' + escapeHTML(String(line.unitPrice)) + '" aria-label="Precio unitario de ' + escapeHTML(line.product) + '"></td>' +
-      '<td><input class="table-input quantity-input" type="number" min="0.01" step="any" inputmode="decimal" data-edit-quantity="' + escapeHTML(line.id) + '" value="' + escapeHTML(String(line.quantity)) + '" aria-label="Cantidad de ' + escapeHTML(line.product) + '"></td>' +
-      '<td><strong>' + escapeHTML(formatMoney(subtotal)) + '</strong></td>' +
-      '<td><button class="remove-line" type="button" data-remove-line="' + escapeHTML(line.id) + '" aria-label="Quitar ' + escapeHTML(line.product) + '">×</button></td>' +
-    '</tr>';
-  }).join('') : '<tr><td colspan="5" class="table-empty">Todavía no agregaste productos. Elegí uno en Lista o escribí un producto libre arriba.</td></tr>';
+    return '<div class="cart-line" data-line-id="' + escapeHTML(line.id) + '">' +
+      '<div class="cart-line-title"><span class="cart-product-name" title="' + escapeHTML(line.product || 'Producto libre') + '">' + escapeHTML(line.product || 'Producto libre') + '</span></div>' +
+      '<input class="table-input" type="number" min="0" step="1" inputmode="numeric" data-edit-price="' + escapeHTML(line.id) + '" value="' + escapeHTML(String(line.unitPrice)) + '" aria-label="Precio unitario de ' + escapeHTML(line.product) + '">' +
+      '<input class="table-input" type="number" min="0.01" step="any" inputmode="decimal" data-edit-quantity="' + escapeHTML(line.id) + '" value="' + escapeHTML(String(line.quantity)) + '" aria-label="Cantidad de ' + escapeHTML(line.product) + '">' +
+      '<div class="cart-line-total"><strong>' + escapeHTML(formatMoney(subtotal)) + '</strong></div>' +
+      '<button class="remove-line" type="button" data-remove-line="' + escapeHTML(line.id) + '" aria-label="Quitar ' + escapeHTML(line.product) + '">×</button>' +
+    '</div>';
+  }).join('') : '<p class="cart-empty">Sin productos.</p>';
+  $('saveCalcPrices').disabled = empty;
+  $('exportCalcCsv').disabled = empty;
+  $('clearCalculator').disabled = empty;
+  $('calcFinalRow').hidden = empty;
+  $('calcCartFooter').hidden = empty;
   $('totalAmount').textContent = formatMoney(getCartTotal());
 };
 const getDiscountRows = function () {
@@ -696,36 +763,58 @@ const updateSummaryDiscount = function (rows) {
     active.final = getCartTotal() - active.saving;
   }
   $('discountAmount').textContent = '− ' + formatMoney(active.saving || 0);
-  $('finalAmount').textContent = formatMoney(active.final == null ? getCartTotal() : active.final);
+  const final = active.final == null ? getCartTotal() : active.final;
+  $('finalAmount').textContent = formatMoney(final);
 };
 const renderDiscountTable = function () {
   if (!$('totalTable')) return;
   const rows = getDiscountRows();
   const selected = $('levelSelect').value || 'all';
+  const compareAll = selected === 'all' || selected === 'legacy:all' || selected.indexOf('legacy-category:') === 0;
+  const bestKey = (bestDiscount(rows) || {}).key;
+  const isChosen = function (row) { return selected === row.key || (compareAll && row.key === bestKey); };
+  const secondary = function (row) {
+    if (row.type === 'promo') {
+      const cards = (row.promo.cards || []).join(', ');
+      const days = (row.promo.days || []).join(', ');
+      return [row.bank, cards, days].filter(Boolean).join(' · ');
+    }
+    if (row.type === 'manual') return '';
+    return [row.bank, row.level && row.level.category].filter(Boolean).join(' · ');
+  };
+  const capText = function (row) { return row.cap ? formatMoney(row.cap) : 'Sin tope'; };
+
   $('totalTable').querySelector('tbody').innerHTML = rows.length ? rows.map(function (row) {
-    const compareAll = selected === 'all' || selected === 'legacy:all' || selected.indexOf('legacy-category:') === 0;
-    const chosen = selected === row.key || (compareAll && row.key === (bestDiscount(rows) || {}).key);
-    const secondary = row.type === 'promo'
-      ? (row.promo.cards || []).join(', ') + ((row.promo.days || []).length ? ' · ' + row.promo.days.join(', ') : '')
-      : row.level.category;
-    const cap = row.cap ? formatMoney(row.cap) : 'Sin tope';
-    const action = row.key === 'manual' ? 'Manual' : '<button class="use-offer" type="button" data-use-discount="' + escapeHTML(row.key) + '">Usar</button>';
-    return '<tr class="' + (chosen ? 'offer-selected' : '') + '">' +
-      '<td><strong>' + escapeHTML(row.name) + '</strong><small>' + escapeHTML(secondary || '') + '</small></td>' +
+    const action = row.key === 'manual' ? '' : '<button class="use-offer" type="button" data-use-discount="' + escapeHTML(row.key) + '">' + (isChosen(row) ? 'En uso' : 'Usar') + '</button>';
+    return '<tr class="' + (isChosen(row) ? 'offer-selected' : '') + '">' +
+      '<td><strong>' + escapeHTML(row.name) + '</strong><small>' + escapeHTML(secondary(row)) + '</small></td>' +
       '<td>' + escapeHTML(row.bank || '') + '</td>' +
       '<td><strong>' + formatNumber(row.percent) + '%</strong></td>' +
       '<td>' + escapeHTML(formatMoney(row.final)) + '</td>' +
       '<td class="saving-value">' + escapeHTML(formatMoney(row.saving)) + '</td>' +
-      '<td>' + escapeHTML(cap) + '</td><td>' + action + '</td></tr>';
-  }).join('') : '<tr><td colspan="7" class="table-empty">No hay descuentos para esta selección. Cambiá el supermercado o ingresá uno manual.</td></tr>';
+      '<td>' + escapeHTML(capText(row)) + '</td><td>' + action + '</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="table-empty">Sin descuentos para esta selección.</td></tr>';
+
+  $('discountCards').innerHTML = rows.length ? rows.map(function (row) {
+    const action = row.key === 'manual' ? '' : '<button class="use-offer" type="button" data-use-discount="' + escapeHTML(row.key) + '">' + (isChosen(row) ? 'En uso' : 'Usar') + '</button>';
+    return '<article class="offer-card' + (isChosen(row) ? ' is-selected' : '') + '">' +
+      '<div class="offer-top"><div class="offer-name"><strong>' + escapeHTML(row.name) + '</strong><small>' + escapeHTML(secondary(row)) + '</small></div>' +
+        '<span class="offer-percent">' + formatNumber(row.percent) + '%</span></div>' +
+      '<div class="offer-math"><span>Total <strong>' + escapeHTML(formatMoney(row.final)) + '</strong></span>' +
+        '<span class="saving-value">Ahorro <strong>' + escapeHTML(formatMoney(row.saving)) + '</strong></span></div>' +
+      '<div class="offer-foot"><small>Tope ' + escapeHTML(capText(row)) + '</small>' + action + '</div>' +
+    '</article>';
+  }).join('') : '<p class="offer-empty">Sin descuentos para esta selección.</p>';
+  $('discountSummaryCount').textContent = rows.length ? countLabel(rows.length, 'oferta', 'ofertas') : 'Sin ofertas';
+
   const store = $('storeSelect').value;
   const offers = getStorePromotions();
   if (store) {
     $('promoDescription').textContent = offers.length
-      ? offers.length + ' promociones encontradas para ' + store + '. Se muestran los beneficios bancarios detectados en PromoScraper PY.'
-      : 'No hay promociones porcentuales detectadas para ' + store + '. Podés aplicar un descuento manual o volver a comparar los niveles originales.';
+      ? countLabel(offers.length, 'oferta', 'ofertas') + ' en ' + store + '.'
+      : 'Sin ofertas para ' + store + '.';
   } else {
-    $('promoDescription').textContent = 'Elegí un supermercado para filtrar sus descuentos. Sin supermercado, se muestran los niveles originales de la calculadora.';
+    $('promoDescription').textContent = 'Elegí un supermercado o usá el descuento manual.';
   }
   updateSummaryDiscount(rows);
 };
@@ -741,8 +830,10 @@ const addPurchaseLine = function () {
   const name = $('calcProductName').value.trim() || ('Producto libre ' + (state.calculatorLines.length + 1));
   const unitPrice = parseAmount($('calcUnitPrice').value);
   const quantity = parseAmount($('calcQuantity').value);
-  if (!(unitPrice > 0)) { $('calcUnitPrice').focus(); showToast('Ingresá un precio unitario válido'); return; }
+  if (!(unitPrice > 0)) { $('calcUnitPrice').focus(); showToast('Ingresá un precio válido'); return; }
   if (!(quantity > 0)) { $('calcQuantity').focus(); showToast('Ingresá una cantidad válida'); return; }
+  const fromList = returnToListAfterAdd;
+  returnToListAfterAdd = false;
   let linkedItem = state.items.find(function (item) { return item.id === selectedItemId; }) || null;
   if (!linkedItem) {
     linkedItem = state.items.find(function (item) { return normalize(item.name) === normalize(name); }) || null;
@@ -757,30 +848,38 @@ const addPurchaseLine = function () {
       unitPrice: unitPrice, quantity: quantity, updatedAt: Date.now()
     });
   }
-  if (linkedItem && $('storeSelect').value && !linkedItem.preferredStore) {
-    linkedItem.preferredStore = $('storeSelect').value;
-    linkedItem.preferred = true;
+  if (linkedItem) {
+    linkedItem.checked = true;
+    linkedItem.updatedAt = Date.now();
+    if ($('storeSelect').value && !linkedItem.preferredStore) {
+      linkedItem.preferredStore = $('storeSelect').value;
+      linkedItem.preferred = true;
+    }
   }
   selectedItemId = '';
   $('calcProductName').value = '';
-  $('calcProductGroup').textContent = 'Libre · sin asociar';
+  $('calcProductGroup').textContent = 'Libre';
+  $('calcProductGroup').hidden = true;
   $('calcUnitPrice').value = '';
   $('calcQuantity').value = '1';
-  $('calcLastPrice').textContent = 'Podés elegir otro producto desde Lista o agregar una línea libre.';
-  $('addCalcItem').textContent = 'Agregar a la compra';
+  $('calcLastPrice').textContent = '';
+  $('addCalcItem').textContent = 'Agregar';
   state.calculatorStore = $('storeSelect').value;
   stateLineChanged();
   updateEquation();
   renderCalculator();
-  showToast(itemId ? 'Producto de tu lista agregado' : 'Producto libre agregado');
+  if (linkedItem) renderList();
+  if (fromList) setView('list');
+  showToast(itemId ? 'Agregado a la compra' : 'Producto libre agregado');
 };
 $('addCalcItem').addEventListener('click', addPurchaseLine);
 $('calcProductName').addEventListener('input', function () {
   const item = state.items.find(function (entry) { return entry.id === selectedItemId; });
   if (item && normalize(item.name) !== normalize(this.value)) {
     selectedItemId = '';
-    $('calcProductGroup').textContent = 'Libre · sin asociar';
-    $('addCalcItem').textContent = 'Agregar a la compra';
+    $('calcProductGroup').textContent = 'Libre';
+    $('calcProductGroup').hidden = true;
+    $('addCalcItem').textContent = 'Agregar';
   }
 });
 $('storeSelect').addEventListener('change', function () {
@@ -793,7 +892,7 @@ $('levelSelect').addEventListener('change', renderDiscountTable);
 ['topeUsadoInput', 'manualDiscountInput'].forEach(function (id) {
   $(id).addEventListener('input', renderDiscountTable);
 });
-$('totalTable').addEventListener('click', function (event) {
+$('discountCompare').addEventListener('click', function (event) {
   const button = event.target.closest('[data-use-discount]');
   if (!button) return;
   const key = button.dataset.useDiscount;
@@ -870,7 +969,7 @@ $('clearCalculator').addEventListener('click', function () {
   stateLineChanged();
   updateEquation();
   renderCalculator();
-  showToast('Lista de compra vaciada');
+  showToast('Compra vaciada');
 });
 const currentDiscountForSaving = function () {
   const rows = getDiscountRows();
@@ -923,7 +1022,7 @@ $('saveCalcPrices').addEventListener('click', function () {
   stateLineChanged();
   renderList();
   renderCalculator();
-  showToast(state.calculatorLines.length + ' precios guardados en el historial');
+  showToast(state.calculatorLines.length + ' precios guardados');
 });
 const exportCalculatorCSV = function () {
   const chosen = currentDiscountForSaving();
@@ -966,7 +1065,7 @@ const exportJSON = function () {
     shoppingList: state
   };
   downloadFile('compra-respaldo-' + localDate() + '.json', JSON.stringify(backup, null, 2), 'application/json;charset=utf-8');
-  $('backupMessage').textContent = 'Respaldo JSON generado. Incluye lista, preferencias e historial de precios.';
+  $('backupMessage').textContent = 'Respaldo exportado.';
 };
 const csvCell = function (value) {
   const text = String(value == null ? '' : value);
@@ -988,7 +1087,7 @@ const exportCSV = function () {
   });
   const csv = '\uFEFF' + rows.map(function (row) { return row.map(csvCell).join(';'); }).join('\r\n');
   downloadFile('historial-precios-' + localDate() + '.csv', csv, 'text/csv;charset=utf-8');
-  $('backupMessage').textContent = state.priceHistory.length + ' registros exportados a CSV.';
+  $('backupMessage').textContent = 'Historial exportado.';
 };
 $('exportJson').addEventListener('click', exportJSON);
 $('exportCsv').addEventListener('click', exportCSV);
@@ -1001,7 +1100,7 @@ $('importFile').addEventListener('change', async function () {
     const parsed = JSON.parse(await file.text());
     const imported = parsed.shoppingList || parsed.state || parsed;
     if (!Array.isArray(imported.items)) throw new Error('El archivo no contiene una lista compatible.');
-    if (!window.confirm('Se restaurará el respaldo y se fusionarán sus precios con el historial de la cuenta. ¿Continuar?')) return;
+    if (!window.confirm('Se restaurará el respaldo y se fusionarán los precios con tu historial. ¿Continuar?')) return;
     state = normalizeState(imported);
     const now = Date.now();
     state.items.forEach(function (item) { item.updatedAt = now; });
@@ -1012,7 +1111,7 @@ $('importFile').addEventListener('change', async function () {
     applyTheme();
     renderList();
     scheduleCloudSync();
-    $('backupMessage').textContent = 'Respaldo importado. Se guardó en este dispositivo' + (session ? ' y se sincronizará con tu cuenta.' : '.');
+    $('backupMessage').textContent = 'Respaldo importado.';
     showToast('Respaldo importado');
   } catch (error) {
     $('backupMessage').textContent = 'No se pudo importar: ' + String(error.message || error);
@@ -1300,6 +1399,9 @@ window.setInterval(function () {
    --------------------------------------------------------- */
 applyTheme();
 renderList();
+if (window.matchMedia('(min-width: 900px)').matches) {
+  $('discountCompare').open = true;
+}
 renderAccount();
 if (session && session.userId && activeUserId !== String(session.userId)) switchUser(session.userId);
 if (session) {

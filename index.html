@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0c0d10">
+  <meta name="theme-color" content="#f1ecfa">
   <meta name="description" content="Lista de compras con promociones bancarias de supermercados y seguimiento de precios en Paraguay.">
   <title>Compra · Lista y descuentos</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,34 +19,25 @@
       <span class="brand-mark" aria-hidden="true">C</span>
       <span>compra<span class="brand-dot">.</span></span>
     </a>
-    <div class="top-actions">
-      <span class="sync-pill" id="syncStatus" role="status">Este dispositivo</span>
-      <button class="icon-button" id="headerProfile" type="button" data-view="profile" aria-label="Abrir perfil">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path></svg>
-      </button>
-    </div>
+    <span class="sync-pill" id="syncStatus" role="status">Local</span>
   </header>
 
   <main class="app-shell">
     <section class="view active" id="listView" aria-labelledby="listTitle">
-      <div class="intro">
-        <div class="intro-copy">
-          <span class="eyebrow">LISTA INTELIGENTE · PARAGUAY</span>
-          <h1 id="listTitle">Que no se quede<br><em>nada.</em></h1>
-          <p>Marcá lo que falta, priorizá lo importante y compará el precio real con los descuentos de supermercados.</p>
-        </div>
-        <div class="progress-card">
-          <span class="progress-label">Tu compra</span>
+      <h1 class="visually-hidden" id="listTitle">Lista de compra</h1>
+
+      <div class="list-overview">
+        <div class="overview-copy">
           <strong id="progressNumber">0/0</strong>
-          <div class="progress-track"><span id="progressBar"></span></div>
-          <small id="progressText">Todo pendiente</small>
+          <span id="progressText">Cargando lista...</span>
         </div>
+        <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
       </div>
 
       <div class="list-toolbar">
         <label class="search-field">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg>
-          <input id="searchInput" type="search" placeholder="Buscar en la lista..." autocomplete="off" aria-label="Buscar productos">
+          <input id="searchInput" type="search" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar productos">
           <kbd>/</kbd>
         </label>
         <div class="filter-row" id="filterButtons" aria-label="Filtrar productos">
@@ -57,41 +48,32 @@
         </div>
       </div>
 
-      <div class="list-summary">
-        <span id="resultCount">Cargando lista...</span>
-        <span class="summary-hint" id="summaryHint">Tocá un producto para cargar su precio</span>
-      </div>
+      <div class="list-meta"><span id="resultCount">Cargando...</span></div>
       <div id="listContainer" class="list-groups" aria-live="polite"></div>
 
-      <footer class="list-footer">
-        <span>Los precios guardados quedan como referencia para próximas compras.</span>
+      <footer class="list-footer" id="listFooter" hidden>
         <button class="text-button" id="clearDone" type="button">Desmarcar comprados</button>
       </footer>
     </section>
 
     <section class="view profile-view" id="profileView" aria-labelledby="profileTitle" hidden>
-      <div class="section-heading">
-        <span class="eyebrow">TU ESPACIO</span>
-        <h1 id="profileTitle">Perfil y datos</h1>
-        <p>Tu lista pertenece a tu cuenta. Iniciá sesión para mantenerla sincronizada entre dispositivos.</p>
-      </div>
+      <header class="page-head">
+        <h1 id="profileTitle">Perfil</h1>
+      </header>
 
-      <section class="panel-card account-card" aria-labelledby="accountTitle">
+      <section class="panel-card" aria-labelledby="accountTitle">
         <div class="panel-card-heading">
-          <div>
-            <span class="eyebrow">CUENTA</span>
-            <h2 id="accountTitle">Sincronización personal</h2>
-          </div>
+          <h2 id="accountTitle">Cuenta</h2>
           <span class="account-state" id="accountState">Local</span>
         </div>
         <div id="loginPanel">
           <form id="loginForm" class="account-form">
-            <label class="field-label" for="loginEmail">Correo electrónico</label>
+            <label class="field-label" for="loginEmail">Correo</label>
             <input class="field-input" id="loginEmail" type="email" autocomplete="email" required placeholder="tu@correo.com">
             <label class="field-label" for="loginPassword">Contraseña</label>
-            <input class="field-input" id="loginPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="Al menos 6 caracteres">
+            <input class="field-input" id="loginPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="Mínimo 6 caracteres">
             <div class="account-actions">
-              <button class="primary-button" type="submit">Iniciar sesión</button>
+              <button class="primary-button" type="submit">Entrar</button>
               <button class="secondary-button" id="signupButton" type="button">Crear cuenta</button>
             </div>
             <button class="text-button forgot-button" id="forgotButton" type="button">Olvidé mi contraseña</button>
@@ -99,165 +81,161 @@
         </div>
         <div id="loggedPanel" hidden>
           <p class="logged-email" id="loggedEmail"></p>
-          <p class="muted-copy">Los cambios se guardan en tu perfil y se comparten con los demás dispositivos donde inicies sesión.</p>
           <div class="account-actions">
-            <button class="secondary-button" id="syncButton" type="button">Sincronizar ahora</button>
+            <button class="secondary-button" id="syncButton" type="button">Sincronizar</button>
             <button class="text-button danger-text" id="logoutButton" type="button">Cerrar sesión</button>
           </div>
         </div>
-        <p class="form-message" id="accountMessage" role="status" aria-live="polite">Sin sesión, la lista queda guardada en este navegador.</p>
+        <p class="form-message" id="accountMessage" role="status" aria-live="polite">Sin sesión. La lista se guarda en este navegador.</p>
       </section>
 
       <section class="panel-card" aria-labelledby="appearanceTitle">
         <div class="panel-card-heading">
-          <div>
-            <span class="eyebrow">APARIENCIA</span>
-            <h2 id="appearanceTitle">Tema visual</h2>
-          </div>
+          <h2 id="appearanceTitle">Tema</h2>
         </div>
         <div class="theme-options" role="group" aria-label="Elegir tema">
-          <button class="theme-option active" type="button" data-theme-choice="dark" aria-pressed="true">
-            <span class="theme-preview dark-preview"></span><span>Oscuro</span>
-          </button>
-          <button class="theme-option" type="button" data-theme-choice="light" aria-pressed="false">
+          <button class="theme-option active" type="button" data-theme-choice="light" aria-pressed="true">
             <span class="theme-preview light-preview"></span><span>Claro</span>
+          </button>
+          <button class="theme-option" type="button" data-theme-choice="dark" aria-pressed="false">
+            <span class="theme-preview dark-preview"></span><span>Oscuro</span>
           </button>
         </div>
       </section>
 
       <section class="panel-card" aria-labelledby="backupTitle">
         <div class="panel-card-heading">
-          <div>
-            <span class="eyebrow">HISTORIAL Y RESPALDO</span>
-            <h2 id="backupTitle">Tus precios guardados</h2>
-          </div>
+          <h2 id="backupTitle">Historial</h2>
           <span class="count-pill" id="historyCount">0 registros</span>
         </div>
-        <p class="muted-copy">Cada registro conserva producto, precio, cantidad, supermercado, banco, promoción aplicada y fecha. Exportá el historial y volvé a importarlo cuando lo necesites.</p>
         <div class="backup-actions">
           <button class="primary-button" id="exportJson" type="button">Exportar respaldo</button>
-          <button class="secondary-button" id="exportCsv" type="button">Exportar precios CSV</button>
-          <button class="secondary-button" id="importButton" type="button">Importar respaldo</button>
+          <button class="secondary-button" id="exportCsv" type="button">Exportar CSV</button>
+          <button class="secondary-button" id="importButton" type="button">Importar</button>
           <input id="importFile" type="file" accept="application/json,.json" hidden>
         </div>
         <p class="form-message" id="backupMessage" role="status"></p>
       </section>
-
-      <p class="profile-footnote">Las promociones se consultan desde PromoScraper PY. El descuento final puede depender de topes, tarjetas y condiciones de cada banco.</p>
-    </section>
-  <section class="view calculator-view" id="calculatorView" aria-labelledby="calculatorTitle" hidden>
-    <header class="calculator-heading">
-      <span class="eyebrow">SUMATORIA DE COMPRA</span>
-      <h1 id="calculatorTitle">Calculadora</h1>
-      <p>La calculadora original, ahora conectada a tus productos y a las promociones de supermercados.</p>
-    </header>
-
-    <section class="calc-context panel-card" aria-labelledby="discountContextTitle">
-      <div class="panel-card-heading">
-        <div><span class="eyebrow">LUGAR DE COMPRA Y BENEFICIO</span><h2 id="discountContextTitle">¿Dónde vas a comprar?</h2></div>
-        <span class="source-status" id="promoStatus">Consultando PromoScraper...</span>
-      </div>
-      <div class="calc-context-grid">
-        <label><span class="field-label">Lugar de compra / supermercado</span>
-          <select class="field-input" id="storeSelect">
-            <option value="">Todos los supermercados</option>
-          </select>
-        </label>
-        <label><span class="field-label">Descuento / beneficio</span>
-          <select class="field-input" id="levelSelect">
-            <option value="all">Comparar todos</option>
-          </select>
-        </label>
-        <label><span class="field-label">Tope usado hasta ahora (₲)</span>
-          <input class="field-input" type="number" id="topeUsadoInput" min="0" step="1" value="0" inputmode="numeric">
-        </label>
-        <label><span class="field-label">Descuento manual (%)</span>
-          <input class="field-input" type="number" id="manualDiscountInput" min="0" max="100" step="0.1" value="0" inputmode="decimal">
-        </label>
-      </div>
-      <p class="promo-description" id="promoDescription">Elegí un supermercado para ver los descuentos bancarios disponibles. También se mantienen los niveles originales de la calculadora.</p>
-      <div class="table-wrap">
-        <table class="calc-table discount-table" id="totalTable">
-          <thead><tr><th>Beneficio / nivel</th><th>Banco / tarjeta</th><th>%</th><th>Total estimado</th><th>Descuento</th><th>Tope</th><th></th></tr></thead>
-          <tbody><tr><td colspan="7" class="table-empty">Cargando descuentos...</td></tr></tbody>
-        </table>
-      </div>
     </section>
 
-    <section class="calc-add-card" aria-labelledby="addPurchaseTitle">
-      <div class="calc-add-head">
-        <div><span class="eyebrow">AGREGAR A LA COMPRA</span><h2 id="addPurchaseTitle">Producto y cantidad</h2></div>
-        <span class="calc-item-state" id="calcProductGroup">Libre · sin asociar</span>
-      </div>
-      <div class="calc-add-grid">
-        <label class="calc-name-field"><span class="field-label">Producto (de tu lista o libre)</span>
-          <input class="field-input" id="calcProductName" type="text" list="shoppingProductOptions" placeholder="Ej. Huevo, leche o producto libre" autocomplete="off">
-        </label>
-        <label><span class="field-label">Precio unitario (₲)</span>
-          <input class="field-input" id="calcUnitPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej. 25000">
-        </label>
-        <label><span class="field-label">Cantidad</span>
-          <input class="field-input" id="calcQuantity" type="number" min="0.01" step="any" value="1" inputmode="decimal">
-        </label>
-        <button class="primary-button calc-add-button" id="addCalcItem" type="button">Agregar a la compra</button>
-      </div>
-      <datalist id="shoppingProductOptions"></datalist>
-      <p class="calc-last-price" id="calcLastPrice">Podés entrar desde un producto de la lista o escribir uno que no esté incluido.</p>
-    </section>
+      <section class="view calculator-view" id="calculatorView" aria-labelledby="calculatorTitle" hidden>
+      <header class="calc-head">
+        <h1 id="calculatorTitle">Calculadora</h1>
+      </header>
 
-    <section class="calc-cart panel-card" aria-labelledby="cartTitle">
-      <div class="panel-card-heading">
-        <div><span class="eyebrow">LO QUE VAS COMPRANDO</span><h2 id="cartTitle">Lista de compra / sumatoria</h2></div>
-        <span class="count-pill" id="calcLineCount">0 productos</span>
-      </div>
-      <div class="table-wrap">
-        <table class="calc-table" id="resultTable">
-          <thead><tr><th>Producto</th><th>Precio unitario</th><th>Cantidad</th><th>Total producto</th><th></th></tr></thead>
-          <tbody id="calcLinesBody"><tr><td colspan="5" class="table-empty">Todavía no agregaste productos.</td></tr></tbody>
-        </table>
-      </div>
-      <div class="calc-final-row">
-        <div><span>Total</span><strong id="totalAmount">₲ 0</strong></div>
-        <div><span>Descuento</span><strong id="discountAmount">₲ 0</strong></div>
-        <div><span>Total con descuento</span><strong id="finalAmount">₲ 0</strong></div>
-      </div>
-      <div class="calc-cart-footer">
-        <button class="secondary-button" id="toggleCalculator" type="button">Regla de tres</button>
-        <button class="text-button" id="clearCalculator" type="button">Vaciar lista de compra</button>
-        <button class="secondary-button" id="exportCalcCsv" type="button">Exportar a CSV</button>
-      </div>
-    </section>
-
-    <section class="panel-card keypad-panel" aria-labelledby="equationTitle">
-      <div class="panel-card-heading">
-        <div><span class="eyebrow">CALCULADORA ORIGINAL</span><h2 id="equationTitle">Ecuación de compra</h2></div>
-      </div>
-      <div id="mainCalculator">
-        <label class="field-label" for="calculatorInput">Podés escribir la cuenta directamente: precio*cantidad+precio...</label>
-        <textarea id="calculatorInput" class="field-input equation-input" rows="3" spellcheck="false" placeholder="Ej. 25000*2+18000"></textarea>
-        <div class="calc-keypad" id="calculatorKeys">
-          <button class="calc-key" type="button" data-key="1">1</button><button class="calc-key" type="button" data-key="2">2</button><button class="calc-key" type="button" data-key="3">3</button><button class="calc-key key-op" type="button" data-key="+">+</button>
-          <button class="calc-key" type="button" data-key="4">4</button><button class="calc-key" type="button" data-key="5">5</button><button class="calc-key" type="button" data-key="6">6</button><button class="calc-key key-op" type="button" data-key="*">×</button>
-          <button class="calc-key" type="button" data-key="7">7</button><button class="calc-key" type="button" data-key="8">8</button><button class="calc-key" type="button" data-key="9">9</button><button class="calc-key" type="button" data-key="0">0</button>
-          <button class="calc-key key-op" type="button" data-key="000">000</button><button class="calc-key key-warn" type="button" data-key="C">Borrar</button><button class="calc-key key-danger" type="button" data-key="CE">Borrar todo</button><button class="calc-key key-op" type="button" data-key=".">.</button>
+      <section class="calc-add-card" aria-labelledby="addPurchaseTitle">
+        <h2 class="visually-hidden" id="addPurchaseTitle">Agregar producto</h2>
+        <div class="calc-add-top">
+          <label class="field-label" for="calcProductName">Producto</label>
+          <span class="calc-item-state" id="calcProductGroup" hidden>Libre</span>
         </div>
-      </div>
-      <div id="reglaTresCalculator" class="rule-three" hidden>
-        <h3>Calculadora de regla de tres</h3>
-        <div class="field-grid">
-          <label><span class="field-label">A</span><input class="field-input" type="number" id="reglatres_a" placeholder="A"></label>
-          <label><span class="field-label">B</span><input class="field-input" type="number" id="reglatres_b" placeholder="B"></label>
-          <label><span class="field-label">C</span><input class="field-input" type="number" id="reglatres_c" placeholder="C"></label>
-          <label><span class="field-label">Resultado</span><input class="field-input" type="text" id="reglatres_result" placeholder="Resultado" readonly></label>
+        <input class="field-input calc-product-input" id="calcProductName" type="text" list="shoppingProductOptions" placeholder="De tu lista o libre" autocomplete="off">
+        <div class="calc-add-row">
+          <label><span class="field-label">Precio (₲)</span>
+            <input class="field-input" id="calcUnitPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="25000">
+          </label>
+          <label><span class="field-label">Cant.</span>
+            <input class="field-input" id="calcQuantity" type="number" min="0.01" step="any" value="1" inputmode="decimal">
+          </label>
+          <button class="primary-button calc-add-button" id="addCalcItem" type="button">Agregar</button>
         </div>
-      </div>
-      <div class="calc-action-row">
-        <button class="primary-button" id="saveCalcPrices" type="button">Guardar precios en el historial</button>
-      </div>
-      <p class="calculation-note">Los descuentos estimados no sustituyen las condiciones oficiales del banco: revisá vigencia, tarjetas, días y topes antes de pagar.</p>
-    </section>
-  </section>
+        <datalist id="shoppingProductOptions"></datalist>
+        <p class="calc-last-price" id="calcLastPrice"></p>
+      </section>
 
+      <section class="calc-cart" aria-labelledby="cartTitle">
+        <div class="cart-top">
+          <h2 id="cartTitle">Compra</h2>
+          <span class="count-pill" id="calcLineCount">0 productos</span>
+        </div>
+        <div class="cart-columns" aria-hidden="true">
+          <span>Producto</span><span>Precio</span><span>Cant.</span><span>Total</span><span></span>
+        </div>
+        <div class="cart-lines" id="calcLinesBody"><p class="cart-empty">Sin productos.</p></div>
+        <div class="calc-final-row" id="calcFinalRow">
+          <div class="final-line"><span>Total</span><strong id="totalAmount">₲ 0</strong></div>
+          <div class="final-line"><span>Descuento</span><strong id="discountAmount">₲ 0</strong></div>
+          <div class="final-line final-line-strong"><span>Con descuento</span><strong id="finalAmount">₲ 0</strong></div>
+        </div>
+        <div class="calc-cart-footer" id="calcCartFooter">
+          <button class="primary-button" id="saveCalcPrices" type="button">Guardar precios</button>
+          <button class="secondary-button" id="exportCalcCsv" type="button">CSV</button>
+          <button class="text-button" id="clearCalculator" type="button">Vaciar</button>
+        </div>
+      </section>
+
+      <section class="calc-context" id="discountContext" aria-labelledby="discountContextTitle">
+        <div class="calc-context-head">
+          <h2 id="discountContextTitle">Descuento</h2>
+          <span class="source-status" id="promoStatus">...</span>
+        </div>
+        <div class="calc-context-grid">
+          <label><span class="field-label">Supermercado</span>
+            <select class="field-input" id="storeSelect">
+              <option value="">Todos</option>
+            </select>
+          </label>
+          <label><span class="field-label">Beneficio</span>
+            <select class="field-input" id="levelSelect">
+              <option value="all">Comparar todos</option>
+            </select>
+          </label>
+        </div>
+        <div class="calc-tune-row">
+          <label class="tune-field"><span>Tope ₲</span>
+            <input class="field-input" type="number" id="topeUsadoInput" min="0" step="1" value="0" inputmode="numeric" aria-label="Tope usado en guaraníes">
+          </label>
+          <label class="tune-field"><span>Manual %</span>
+            <input class="field-input" type="number" id="manualDiscountInput" min="0" max="100" step="0.1" value="0" inputmode="decimal" aria-label="Descuento manual en porcentaje">
+          </label>
+        </div>
+        <p class="promo-description" id="promoDescription">Elegí un supermercado o usá el descuento manual.</p>
+
+        <details class="discount-compare" id="discountCompare">
+          <summary>
+            <span>Ofertas</span>
+            <span class="summary-count" id="discountSummaryCount"></span>
+          </summary>
+          <div class="table-wrap">
+            <table class="calc-table discount-table" id="totalTable">
+              <thead><tr><th>Beneficio</th><th>Banco</th><th>%</th><th>Total</th><th>Ahorro</th><th>Tope</th><th></th></tr></thead>
+              <tbody><tr><td colspan="7" class="table-empty">Cargando descuentos...</td></tr></tbody>
+            </table>
+          </div>
+          <div class="offer-cards" id="discountCards"></div>
+        </details>
+      </section>
+
+      <details class="keypad-panel" id="keypadPanel">
+        <summary class="panel-summary">
+          <span class="panel-summary-title" id="equationTitle">Ecuación y teclado</span>
+        </summary>
+        <div class="keypad-body">
+          <div id="mainCalculator">
+            <label class="field-label" for="calculatorInput">Precio × cantidad + precio...</label>
+            <textarea id="calculatorInput" class="field-input equation-input" rows="2" spellcheck="false" placeholder="25000*2+18000"></textarea>
+            <div class="calc-keypad" id="calculatorKeys">
+              <button class="calc-key" type="button" data-key="1">1</button><button class="calc-key" type="button" data-key="2">2</button><button class="calc-key" type="button" data-key="3">3</button><button class="calc-key key-op" type="button" data-key="+">+</button>
+              <button class="calc-key" type="button" data-key="4">4</button><button class="calc-key" type="button" data-key="5">5</button><button class="calc-key" type="button" data-key="6">6</button><button class="calc-key key-op" type="button" data-key="*">×</button>
+              <button class="calc-key" type="button" data-key="7">7</button><button class="calc-key" type="button" data-key="8">8</button><button class="calc-key" type="button" data-key="9">9</button><button class="calc-key" type="button" data-key="0">0</button>
+              <button class="calc-key key-op" type="button" data-key="000">000</button><button class="calc-key key-warn" type="button" data-key="C">Borrar</button><button class="calc-key key-danger" type="button" data-key="CE">Todo</button><button class="calc-key key-op" type="button" data-key=".">.</button>
+            </div>
+          </div>
+          <div id="reglaTresCalculator" class="rule-three" hidden>
+            <h3>Regla de tres</h3>
+            <div class="field-grid">
+              <label><span class="field-label">A</span><input class="field-input" type="number" id="reglatres_a" placeholder="A"></label>
+              <label><span class="field-label">B</span><input class="field-input" type="number" id="reglatres_b" placeholder="B"></label>
+              <label><span class="field-label">C</span><input class="field-input" type="number" id="reglatres_c" placeholder="C"></label>
+              <label><span class="field-label">Resultado</span><input class="field-input" type="text" id="reglatres_result" placeholder="Resultado" readonly></label>
+            </div>
+          </div>
+          <div class="keypad-actions">
+            <button class="secondary-button" id="toggleCalculator" type="button">Regla de tres</button>
+          </div>
+        </div>
+      </details>
+    </section>
   </main>
 
   <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal">
@@ -265,7 +243,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="m8 12 2.5 2.5L16 9"></path></svg>
       <span>Lista</span>
     </button>
-    <button class="nav-item nav-calculator" type="button" data-view="calculator" aria-label="Calculadora">
+    <button class="nav-item" type="button" data-view="calculator" aria-label="Calculadora">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M8 7h8M8 11h2m4 0h2m-8 4h2m4 0h2m-8 3h2"></path></svg>
       <span>Calculadora</span>
     </button>
