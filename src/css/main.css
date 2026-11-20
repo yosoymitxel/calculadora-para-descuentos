@@ -705,7 +705,6 @@ input[type="number"] { -moz-appearance: textfield; }
 /* CRUD compacto para grupos y productos */
 .list-meta { justify-content: space-between; gap: 8px; }
 .postit-group { position: relative; }
-.postit-head { padding-right: 132px; }
 .postit-controls { position: absolute; z-index: 3; top: 8px; right: 25px; display: flex; align-items: center; gap: 1px; }
 .icon-action { display: grid; width: 27px; height: 27px; flex: none; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--muted); }
 .icon-action svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
@@ -735,7 +734,6 @@ input[type="number"] { -moz-appearance: textfield; }
 .final-line-total span { color: var(--text); font-size: 12px; }
 .final-line-discount span, .final-line-net span { color: var(--muted); font-size: 10px; }
 @media (max-width: 380px) {
-  .postit-head { padding-right: 120px; }
   .postit-controls { right: 24px; }
   .postit-controls .icon-action { width: 25px; }
   .product-actions .icon-action { width: 23px; }
@@ -748,3 +746,42 @@ input[type="number"] { -moz-appearance: textfield; }
 .product-actions .item-crud-action { width: 25px; padding: 0; }
 .product-actions .item-crud-action svg { display: block; }
 @media (min-width: 640px) { .product-actions .item-crud-action { width: 27px; } }
+
+/* Cabecera y acciones: controles adaptados al ancho disponible. */
+@media (max-width: 899px) {
+  .postit-head { padding-right: 11px; }
+  .postit-controls {
+    position: static;
+    justify-content: flex-end;
+    padding: 0 8px 7px;
+  }
+  .product-actions { gap: 2px; }
+  .product-actions .tag-button .tag-label { display: none; }
+}
+@media (min-width: 900px) {
+  .postit-head { padding-right: 132px; }
+  .postit-controls {
+    position: absolute;
+    top: 8px;
+    right: 25px;
+    padding: 0;
+  }
+  .product-actions {
+    flex: none;
+    align-items: center;
+    gap: 4px;
+  }
+  .product-actions .tag-button {
+    width: auto;
+    min-width: 82px;
+    height: 30px;
+    grid-auto-flow: column;
+    gap: 5px;
+    padding: 0 9px;
+    white-space: nowrap;
+  }
+  .product-actions .item-crud-action {
+    width: 30px;
+    height: 30px;
+  }
+}
