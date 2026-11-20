@@ -250,6 +250,19 @@
   </nav>
 
   <dialog class="crud-dialog" id="crudDialog" aria-labelledby="crudTitle"><form id="crudForm"><div class="crud-dialog-head"><h2 id="crudTitle">Editar</h2><button class="icon-action" id="crudClose" type="button" aria-label="Cerrar" title="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><label class="field-label" id="crudLabel" for="crudInput">Nombre</label><input class="field-input" id="crudInput" type="text" maxlength="100" autocomplete="off" required><p class="crud-hint" id="crudHint"></p><div class="crud-dialog-actions"><button class="secondary-button" id="crudCancel" type="button">Cancelar</button><button class="primary-button" type="submit">Guardar</button></div></form></dialog>
+  <dialog class="crud-dialog confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <div class="confirm-dialog-content">
+      <div class="crud-dialog-head">
+        <h2 id="confirmTitle">Confirmar acción</h2>
+        <button class="icon-action" id="confirmClose" type="button" aria-label="Cerrar" title="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button>
+      </div>
+      <p class="confirm-message" id="confirmMessage"></p>
+      <div class="crud-dialog-actions">
+        <button class="secondary-button" id="confirmCancel" type="button">Cancelar</button>
+        <button class="primary-button" id="confirmAccept" type="button">Confirmar</button>
+      </div>
+    </div>
+  </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

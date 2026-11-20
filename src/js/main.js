@@ -352,15 +352,58 @@ $('crudForm').addEventListener('submit', function (event) {
   }
 });
 
-$('listContainer').addEventListener('click', function (event) {
+const confirmDialog = $('confirmDialog');
+let pendingConfirmation = null;
+const resolveConfirmation = function (confirmed) {
+  const resolve = pendingConfirmation;
+  pendingConfirmation = null;
+  if (confirmDialog.open) confirmDialog.close();
+  if (resolve) resolve(confirmed);
+};
+const askConfirmation = function (options) {
+  if (pendingConfirmation) resolveConfirmation(false);
+  return new Promise(function (resolve) {
+    pendingConfirmation = resolve;
+    $('confirmTitle').textContent = options.title || 'Confirmar acción';
+    $('confirmMessage').textContent = options.message || '¿Deseás continuar?';
+    $('confirmAccept').textContent = options.confirmText || 'Confirmar';
+    $('confirmAccept').classList.toggle('danger-confirm', !!options.danger);
+    confirmDialog.showModal();
+    $('confirmCancel').focus();
+  });
+};
+$('confirmAccept').addEventListener('click', function () { resolveConfirmation(true); });
+$('confirmCancel').addEventListener('click', function () { resolveConfirmation(false); });
+$('confirmClose').addEventListener('click', function () { resolveConfirmation(false); });
+confirmDialog.addEventListener('click', function (event) {
+  if (event.target === confirmDialog) resolveConfirmation(false);
+});
+confirmDialog.addEventListener('close', function () {
+  if (pendingConfirmation) {
+    const resolve = pendingConfirmation;
+    pendingConfirmation = null;
+    resolve(false);
+  }
+});
+
+$('listContainer').addEventListener('click', async function (event) {
   const addItem = event.target.closest('[data-add-item]');
   if (addItem) { openCrudDialog('item-add', addItem.dataset.addItem); return; }
   const editGroup = event.target.closest('[data-edit-group]');
   if (editGroup) { openCrudDialog('group-edit', editGroup.dataset.editGroup); return; }
   const deleteGroup = event.target.closest('[data-delete-group]');
   if (deleteGroup) {
-    const name = deleteGroup.dataset.deleteGroup, members = state.items.filter(function (item) { return item.group === name; });
-    if (!window.confirm('Eliminar el grupo «' + name + '» y sus ' + members.length + ' productos? El historial se conservará.')) return;
+    const name = deleteGroup.dataset.deleteGroup;
+    const membersBeforeConfirm = state.items.filter(function (item) { return item.group === name; });
+    const confirmed = await askConfirmation({
+      title: 'Eliminar grupo',
+      message: 'Se eliminará «' + name + '» junto con ' + membersBeforeConfirm.length + ' productos. El historial de precios se conservará.',
+      confirmText: 'Eliminar grupo',
+      danger: true
+    });
+    if (!confirmed) return;
+    const members = state.items.filter(function (item) { return item.group === name; });
+    if (!state.groups.includes(name) && !members.length) return;
     state.deletedGroupNames = Array.from(new Set(state.deletedGroupNames.concat([name])));
     members.forEach(function (item) { state.deletedItemIds = Array.from(new Set(state.deletedItemIds.concat([item.id]))); });
     state.items = state.items.filter(function (item) { return item.group !== name; });
@@ -372,8 +415,16 @@ $('listContainer').addEventListener('click', function (event) {
   if (editItem) { const item = state.items.find(function (entry) { return entry.id === editItem.dataset.editItem; }); if (item) openCrudDialog('item-edit', item.group, item.id); return; }
   const deleteItem = event.target.closest('[data-delete-item]');
   if (deleteItem) {
-    const id = deleteItem.dataset.deleteItem, item = state.items.find(function (entry) { return entry.id === id; });
-    if (!item || !window.confirm('Eliminar «' + item.name + '» de la lista?')) return;
+    const id = deleteItem.dataset.deleteItem;
+    const item = state.items.find(function (entry) { return entry.id === id; });
+    if (!item) return;
+    const confirmed = await askConfirmation({
+      title: 'Eliminar producto',
+      message: '¿Querés quitar «' + item.name + '» de la lista?',
+      confirmText: 'Eliminar producto',
+      danger: true
+    });
+    if (!confirmed || !state.items.some(function (entry) { return entry.id === id; })) return;
     state.deletedItemIds = Array.from(new Set(state.deletedItemIds.concat([id])));
     state.items = state.items.filter(function (entry) { return entry.id !== id; });
     state.calculatorLines.forEach(function (line) { if (line.itemId === id) line.itemId = ''; });
@@ -1157,7 +1208,12 @@ $('importFile').addEventListener('change', async function () {
     const parsed = JSON.parse(await file.text());
     const imported = parsed.shoppingList || parsed.state || parsed;
     if (!Array.isArray(imported.items)) throw new Error('El archivo no contiene una lista compatible.');
-    if (!window.confirm('Se restaurará el respaldo y se fusionarán los precios con tu historial. ¿Continuar?')) return;
+    const confirmed = await askConfirmation({
+      title: 'Restaurar respaldo',
+      message: 'Se restaurará el respaldo y se fusionarán los precios con tu historial. Esta operación reemplazará la lista actual. ¿Continuar?',
+      confirmText: 'Restaurar respaldo'
+    });
+    if (!confirmed) return;
     state = normalizeState(imported);
     const now = Date.now();
     state.items.forEach(function (item) { item.updatedAt = now; });

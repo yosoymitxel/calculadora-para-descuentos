@@ -747,13 +747,25 @@ input[type="number"] { -moz-appearance: textfield; }
 .product-actions .item-crud-action svg { display: block; }
 @media (min-width: 640px) { .product-actions .item-crud-action { width: 27px; } }
 
-/* Cabecera y acciones: controles adaptados al ancho disponible. */
+/* Cabecera y acciones: controles integrados al encabezado del grupo. */
 @media (max-width: 899px) {
-  .postit-head { padding-right: 11px; }
+  .postit-head {
+    padding: 10px 11px 7px;
+  }
   .postit-controls {
     position: static;
+    display: flex;
     justify-content: flex-end;
-    padding: 0 8px 7px;
+    align-items: center;
+    gap: 2px;
+    min-height: 31px;
+    margin: -3px 0 0;
+    padding: 0 8px 6px;
+    background: var(--surface);
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .postit-group[open] .postit-controls {
+    background: var(--surface-2);
   }
   .product-actions { gap: 2px; }
   .product-actions .tag-button .tag-label { display: none; }
@@ -764,7 +776,11 @@ input[type="number"] { -moz-appearance: textfield; }
     position: absolute;
     top: 8px;
     right: 25px;
+    display: flex;
+    align-items: center;
+    gap: 1px;
     padding: 0;
+    background: transparent;
   }
   .product-actions {
     flex: none;
@@ -784,4 +800,16 @@ input[type="number"] { -moz-appearance: textfield; }
     width: 30px;
     height: 30px;
   }
+}
+
+/* Confirmaciones propias, coherentes con el diálogo de edición. */
+.confirm-dialog { width: min(440px, calc(100vw - 32px)); }
+.confirm-dialog-content { display: grid; gap: 10px; }
+.confirm-message { margin: 2px 0 8px; color: var(--text); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.confirm-dialog .danger-confirm { background: var(--danger); color: #fff; }
+.confirm-dialog .danger-confirm:hover { filter: brightness(.94); }
+.confirm-dialog .crud-dialog-actions { margin-top: 0; }
+@media (max-width: 420px) {
+  .confirm-dialog { padding: 16px; }
+  .confirm-dialog .crud-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; }
 }
