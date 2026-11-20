@@ -113,7 +113,7 @@ const makeDefaultItems = function () {
 };
 const DEFAULT_ITEMS = makeDefaultItems();
 const defaultState = function () {
-  return { version: 1, theme: 'dark', themeUpdatedAt: 0, updatedAt: 0, items: DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); }), priceHistory: [] };
+  return { version: 1, theme: 'dark', themeUpdatedAt: 0, updatedAt: 0, items: DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); }), calculatorLines: [], calculatorStore: '', priceHistory: [] };
 };
 const normalizeState = function (raw) {
   const source = raw && typeof raw === 'object' ? raw : {};
@@ -148,6 +148,8 @@ const normalizeState = function (raw) {
     themeUpdatedAt: Number(source.themeUpdatedAt) || 0,
     updatedAt: Number(source.updatedAt) || 0,
     items: items,
+    calculatorLines: Array.isArray(source.calculatorLines) ? source.calculatorLines.filter(function (line) { return line && typeof line === 'object' && typeof line.product === 'string'; }).map(function (line, index) { return Object.assign({}, line, { id: String(line.id || ('calc-' + index + '-' + slug(line.product))), itemId: String(line.itemId || ''), unitPrice: Number(line.unitPrice) || 0, quantity: Number(line.quantity) || 1, updatedAt: Number(line.updatedAt) || 0 }); }) : [],
+    calculatorStore: String(source.calculatorStore || ''),
     priceHistory: Array.isArray(source.priceHistory) ? source.priceHistory.filter(function (entry) {
       return entry && typeof entry === 'object' && typeof entry.itemId === 'string';
     }) : []
@@ -163,7 +165,6 @@ let promotions = [];
 let promoLoadedAt = 0;
 let selectedItemId = '';
 let activeFilter = 'all';
-let collapsedGroups = new Set();
 let syncTimer = null;
 let toastTimer = null;
 let syncPromise = null;
@@ -229,37 +230,26 @@ const getLastPrice = function (itemId) {
 };
 
 /* ---------------------------------------------------------
-   Lista, búsqueda y tarjetas
+   Lista: cada post-it es un grupo completo de productos
    --------------------------------------------------------- */
 const renderItem = function (item) {
   const last = getLastPrice(item.id);
   const priceHint = last
-    ? '<span class="product-price-hint">Último precio: <strong>' + escapeHTML(formatMoney(last.finalUnitPrice || last.total)) + '</strong>' +
-      (last.supermarket ? ' · ' + escapeHTML(last.supermarket) : '') +
-      (last.date ? ' · ' + escapeHTML(last.date) : '') + '</span>'
-    : '<span class="product-price-hint">Sin precio registrado · tocar para calcular</span>';
-  const preferredStore = item.preferredStore
-    ? '<span class="preferred-store">Super preferido: ' + escapeHTML(item.preferredStore) + '</span>' : '';
-  return '<article class="product-card' + (item.checked ? ' is-done' : '') + '" data-item-id="' + escapeHTML(item.id) + '">' +
-    '<div class="product-top">' +
-      '<label class="product-check"><input type="checkbox" data-check="' + escapeHTML(item.id) + '" ' + (item.checked ? 'checked' : '') + ' aria-label="Marcar ' + escapeHTML(item.name) + ' como comprado"></label>' +
-      '<button class="product-main" type="button" data-price-open="' + escapeHTML(item.id) + '">' +
-        '<span class="product-name">' + escapeHTML(item.name) + '</span>' + priceHint +
-      '</button>' +
-    '</div>' +
+    ? '<span class="product-price-hint">Último: <strong>' + escapeHTML(formatMoney(last.finalUnitPrice || last.total)) + '</strong>' + (last.supermarket ? ' · ' + escapeHTML(last.supermarket) : '') + '</span>'
+    : '<span class="product-price-hint">Sin precio registrado</span>';
+  return '<article class="product-row' + (item.checked ? ' is-done' : '') + '" data-item-id="' + escapeHTML(item.id) + '">' +
+    '<label class="product-check"><input type="checkbox" data-check="' + escapeHTML(item.id) + '" ' + (item.checked ? 'checked' : '') + ' aria-label="Marcar ' + escapeHTML(item.name) + ' como comprado"></label>' +
+    '<button class="product-main" type="button" data-open-calculator="' + escapeHTML(item.id) + '">' +
+      '<span class="product-name">' + escapeHTML(item.name) + '</span>' + priceHint +
+    '</button>' +
     '<div class="product-actions">' +
       '<button class="tag-button" type="button" data-priority="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.priority) + '">Prioridad</button>' +
       '<button class="tag-button preferred" type="button" data-preferred="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.preferred) + '">Super preferido</button>' +
-      '<button class="price-action" type="button" data-price-open="' + escapeHTML(item.id) + '">Precio <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>' +
-    '</div>' + preferredStore +
-  '</article>';
+    '</div></article>';
 };
 const renderList = function () {
   const container = $('listContainer');
   if (!container) return;
-  container.querySelectorAll('.category-group').forEach(function (group) {
-    if (!group.open) collapsedGroups.add(group.dataset.group);
-  });
   const query = normalize($('searchInput').value);
   const filtered = state.items.filter(function (item) {
     const matchesText = !query || normalize(item.name + ' ' + item.group).includes(query);
@@ -275,31 +265,31 @@ const renderList = function () {
   $('progressText').textContent = complete === total ? 'Lista completa' : (total - complete) + ' productos pendientes';
   $('progressBar').style.width = (total ? (complete / total) * 100 : 0) + '%';
   $('resultCount').textContent = filtered.length + ' productos';
-  $('summaryHint').textContent = query ? 'Resultados para «' + $('searchInput').value.trim() + '»' : 'Tocá un producto para cargar su precio';
+  $('summaryHint').textContent = query ? 'Resultados para «' + $('searchInput').value.trim() + '»' : 'Tocá un producto para abrir la calculadora';
   const groups = DEFAULT_GROUPS.map(function (group) { return group.name; });
   state.items.forEach(function (item) { if (!groups.includes(item.group)) groups.push(item.group); });
-  const html = groups.map(function (groupName) {
+  const html = groups.map(function (groupName, groupIndex) {
     const items = filtered.filter(function (item) { return item.group === groupName; });
     if (!items.length) return '';
-    const allCount = state.items.filter(function (item) { return item.group === groupName; }).length;
     const doneCount = items.filter(function (item) { return item.checked; }).length;
-    const cards = items.map(renderItem).join('');
-    return '<details class="category-group" data-group="' + escapeHTML(groupName) + '"' + (collapsedGroups.has(groupName) ? '' : ' open') + '>' +
-      '<summary><span class="category-heading"><strong>' + escapeHTML(groupName) + '</strong><span class="category-count">' + items.length + (items.length !== allCount ? '/' + allCount : '') + '</span></span>' +
-      '<span class="category-count">' + doneCount + '/' + items.length + '</span></summary>' +
-      '<div class="category-body"><div class="product-grid">' + cards + '</div></div>' +
-    '</details>';
+    const priorityCount = items.filter(function (item) { return item.priority; }).length;
+    return '<article class="postit-group postit-tone-' + (groupIndex % 4) + '" data-group="' + escapeHTML(groupName) + '">' +
+      '<header class="postit-head"><div class="postit-title-wrap"><h2>' + escapeHTML(groupName) + '</h2><span class="postit-count">' + items.length + '</span></div>' +
+      '<span class="postit-progress">' + doneCount + '/' + items.length + ' listos</span></header>' +
+      '<div class="postit-items">' + items.map(renderItem).join('') + '</div>' +
+      (priorityCount ? '<footer class="postit-foot">' + priorityCount + ' con prioridad</footer>' : '') +
+    '</article>';
   }).join('');
   container.innerHTML = html || '<div class="empty-state">No hay productos que coincidan con la búsqueda o el filtro.</div>';
   $('historyCount').textContent = state.priceHistory.length + (state.priceHistory.length === 1 ? ' registro' : ' registros');
-  const clearButton = $('clearDone');
-  clearButton.hidden = complete === 0;
+  $('clearDone').hidden = complete === 0;
   setSyncStatus(session ? 'account' : 'local');
 };
 const touchState = function () {
   state.updatedAt = Math.max(Date.now(), (Number(state.updatedAt) || 0) + 1);
   persistLocal();
   renderList();
+  if (!$('calculatorView').hidden) renderCalculator();
   scheduleCloudSync();
 };
 const updateItem = function (id, patch) {
@@ -323,8 +313,8 @@ $('listContainer').addEventListener('click', function (event) {
     if (item) updateItem(id, { preferred: !item.preferred, preferredStore: item.preferred ? '' : item.preferredStore });
     return;
   }
-  const openPrice = event.target.closest('[data-price-open]');
-  if (openPrice) openPriceDialog(openPrice.dataset.priceOpen);
+  const openCalc = event.target.closest('[data-open-calculator]');
+  if (openCalc) openCalculatorForItem(openCalc.dataset.openCalculator);
 });
 $('listContainer').addEventListener('change', function (event) {
   const checkbox = event.target.closest('[data-check]');
@@ -343,12 +333,6 @@ $('filterButtons').addEventListener('click', function (event) {
   });
   renderList();
 });
-$('listContainer').addEventListener('toggle', function (event) {
-  const group = event.target;
-  if (!group || !group.matches || !group.matches('.category-group')) return;
-  if (group.open) collapsedGroups.delete(group.dataset.group);
-  else collapsedGroups.add(group.dataset.group);
-}, true);
 $('clearDone').addEventListener('click', function () {
   const now = Date.now();
   state.items.forEach(function (item) {
@@ -362,11 +346,14 @@ $('clearDone').addEventListener('click', function () {
    Navegación y tema
    --------------------------------------------------------- */
 const setView = function (name) {
-  const list = name !== 'profile';
-  $('listView').classList.toggle('active', list);
-  $('listView').hidden = !list;
-  $('profileView').classList.toggle('active', !list);
-  $('profileView').hidden = list;
+  const profile = name === 'profile';
+  $('listView').classList.toggle('active', !profile);
+  $('listView').hidden = profile;
+  $('profileView').classList.toggle('active', profile);
+  $('profileView').hidden = !profile;
+  $('calculatorView').classList.remove('active');
+  $('calculatorView').hidden = true;
+  $('bottomNav').hidden = false;
   document.querySelectorAll('.nav-item').forEach(function (button) {
     const active = button.dataset.view === name;
     button.classList.toggle('active', active);
@@ -375,6 +362,31 @@ const setView = function (name) {
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
+const openCalculatorForItem = function (itemId) {
+  const item = state.items.find(function (entry) { return entry.id === itemId; });
+  if (!item) return;
+  selectedItemId = itemId;
+  $('listView').hidden = true;
+  $('profileView').hidden = true;
+  $('calculatorView').hidden = false;
+  $('calculatorView').classList.add('active');
+  $('bottomNav').hidden = true;
+  const last = getLastPrice(itemId);
+  const existing = state.calculatorLines.find(function (line) { return line.itemId === itemId; });
+  $('selectedProductTitle').textContent = item.name;
+  $('calcProductGroup').textContent = item.group;
+  $('calcUnitPrice').value = existing ? String(existing.unitPrice) : last ? String(last.unitPrice || '') : '';
+  $('calcQuantity').value = existing ? String(existing.quantity) : last ? String(last.quantity || 1) : '1';
+  $('calcStore').value = item.preferredStore || state.calculatorStore || (last && last.supermarket) || '';
+  $('calcLastPrice').textContent = last
+    ? 'Último registro: ' + formatMoney(last.finalUnitPrice || last.total) + ' · ' + (last.supermarket || 'supermercado no indicado') + ' · ' + (last.date || '')
+    : 'Todavía no hay precios guardados para este producto.';
+  $('addCalcItem').textContent = existing ? 'Actualizar en la sumatoria' : 'Agregar a la sumatoria';
+  renderCalculator();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(function () { $('calcUnitPrice').focus(); }, 50);
+};
+$('backToList').addEventListener('click', function () { setView('list'); });
 document.querySelectorAll('[data-view]').forEach(function (button) {
   button.addEventListener('click', function () { setView(button.dataset.view); });
 });
@@ -396,27 +408,64 @@ document.querySelectorAll('[data-theme-choice]').forEach(function (button) {
 });
 
 /* ---------------------------------------------------------
-   Promociones de supermercados desde PromoScraper PY
+   PromoScraper PY: descuentos de supermercados + calculadora original
    --------------------------------------------------------- */
 const isSupermarketPromo = function (promo) {
   const category = normalize(promo && promo.category);
-  const text = normalize((promo && promo.title) + ' ' + (promo && promo.desc));
+  const sourceText = normalize([promo && promo.title, promo && promo.desc, promo && promo.group].join(' '));
   return category.includes('supermercado') || category.includes('mayorista') ||
-    text.includes('supermercado') || text.includes('mayorista');
+    sourceText.includes('supermercado') || sourceText.includes('mayorista');
 };
 const promotionTitle = function (promo) {
-  return String(promo && (promo.supermarket || promo.commerce || promo.store || promo.title) || 'Promoción de supermercado');
+  return String(promo && (promo.supermarket || promo.commerce || promo.store || promo.title) || 'Supermercado');
 };
 const promotionDiscount = function (promo) {
-  const value = Number(promo && promo.discount_percent);
-  return Number.isFinite(value) && value > 0 ? value : 0;
+  const direct = Number(promo && promo.discount_percent);
+  if (Number.isFinite(direct) && direct > 0 && direct <= 100) return direct;
+  const text = String((promo && promo.title) || '') + ' ' + String((promo && promo.desc) || '');
+  const match = text.match(/(\d{1,2}(?:[.,]\d+)?)\s*%\s*(?:off|descuento|dto|reintegro|cashback|dscto)?/i);
+  const value = match ? Number(match[1].replace(',', '.')) : 0;
+  return value > 0 && value <= 100 ? value : 0;
+};
+const promotionCap = function (promo) {
+  const direct = Number(promo && (promo.discount_cap || promo.max_discount || promo.maxDiscount || promo.top || promo.cap));
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const text = String((promo && promo.desc) || '') + ' ' + String((promo && promo.title) || '');
+  const match = text.match(/(?:tope|maximo|máximo)\D{0,28}(?:gs\.?|guaran[ií]es|₲)?\s*([\d.]{3,})/i);
+  if (!match) return 0;
+  const parsed = Number(match[1].replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 const promotionLabel = function (promo) {
-  const bits = [promo.bankShort || promo.bankId || 'Banco'];
-  if (promotionDiscount(promo)) bits.push(promotionDiscount(promo) + '%');
-  if (Array.isArray(promo.days) && promo.days.length) bits.push(promo.days.join(', '));
-  if (promo.when) bits.push(promo.when);
-  return promotionTitle(promo) + ' · ' + bits.join(' · ');
+  const bank = promo.bankShort || promo.bankId || 'Banco';
+  const cards = Array.isArray(promo.cards) && promo.cards.length ? ' · ' + promo.cards.join(', ') : '';
+  const days = Array.isArray(promo.days) && promo.days.length ? ' · ' + promo.days.join(', ') : promo.when ? ' · ' + promo.when : '';
+  const campaign = promo.group && normalize(promo.group) !== normalize(promotionTitle(promo)) ? ' · ' + promo.group : '';
+  return promotionTitle(promo) + ' · ' + bank + ' · ' + promotionDiscount(promo) + '%' + cards + days + campaign;
+};
+const updatePromoSourceStatus = function (mode) {
+  const element = $('promoStatus');
+  element.classList.remove('good');
+  if (mode === 'live') {
+    element.textContent = promotions.length + ' ofertas · PromoScraper PY';
+    element.classList.add('good');
+  } else if (mode === 'cached') {
+    element.textContent = promotions.length + ' ofertas · copia local';
+    element.classList.add('good');
+  } else {
+    element.textContent = 'Promociones no disponibles';
+  }
+};
+const populateSupermarketOptions = function () {
+  const values = new Map();
+  promotions.forEach(function (promo) {
+    const name = promotionTitle(promo).trim();
+    if (name && !values.has(normalize(name))) values.set(normalize(name), name);
+  });
+  $('supermarketOptions').innerHTML = Array.from(values.values()).sort().map(function (name) {
+    return '<option value="' + escapeHTML(name) + '"></option>';
+  }).join('');
+  renderDiscountComparison();
 };
 const loadPromotions = async function () {
   const cached = storage.get('compra.supermarket-promos.v1', null);
@@ -430,214 +479,323 @@ const loadPromotions = async function () {
     const response = await fetch(PROMOS_URL, { cache: 'no-store' });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const data = await response.json();
-    if (!Array.isArray(data)) throw new Error('El archivo de promociones no contiene una lista.');
+    if (!Array.isArray(data)) throw new Error('Formato de promociones inválido');
     storage.set('compra.supermarket-promos.v1', { at: Date.now(), data: data });
     promotions = data.filter(isSupermarketPromo);
     promoLoadedAt = Date.now();
-    populateSupermarketOptions();
     updatePromoSourceStatus('live');
+    populateSupermarketOptions();
+    renderDiscountComparison();
   } catch (error) {
     updatePromoSourceStatus(promotions.length ? 'cached' : 'error');
-    if (!promotions.length) $('promoDescription').textContent = 'No se pudieron cargar las promociones. Podés registrar el supermercado y el descuento manualmente.';
+    $('promoDescription').textContent = promotions.length
+      ? 'No se pudo actualizar PromoScraper PY. Se muestran las promociones guardadas en este dispositivo.'
+      : 'No se pudo leer PromoScraper PY. La calculadora sigue funcionando y podés ingresar un descuento manual.';
+    renderDiscountComparison();
   }
 };
-const updatePromoSourceStatus = function (mode) {
-  const element = $('promoStatus');
-  if (mode === 'live') {
-    element.textContent = promotions.length + ' promociones · PromoScraper PY';
-    element.classList.add('good');
-  } else if (mode === 'cached') {
-    element.textContent = promotions.length + ' promociones · copia local';
-    element.classList.add('good');
-  } else {
-    element.textContent = 'Promociones no disponibles';
-    element.classList.remove('good');
-  }
+const getPromoCandidates = function () {
+  const query = normalize($('calcStore').value || state.calculatorStore);
+  return promotions.map(function (promo, index) { return { promo: promo, index: index }; })
+    .filter(function (entry) {
+      if (!isSupermarketPromo(entry.promo) || !promotionDiscount(entry.promo)) return false;
+      if (!query) return true;
+      const haystack = normalize([
+        promotionTitle(entry.promo), entry.promo.desc, entry.promo.group,
+        entry.promo.bankShort, entry.promo.bankId
+      ].join(' '));
+      return haystack.includes(query);
+    })
+    .sort(function (a, b) {
+      return promotionDiscount(b.promo) - promotionDiscount(a.promo) ||
+        promotionTitle(a.promo).localeCompare(promotionTitle(b.promo));
+    });
 };
-const populateSupermarketOptions = function () {
-  const values = new Map();
-  promotions.forEach(function (promo) {
-    const name = promotionTitle(promo).trim();
-    if (name && !values.has(normalize(name))) values.set(normalize(name), name);
-  });
-  $('supermarketOptions').innerHTML = Array.from(values.values()).sort().map(function (name) {
-    return '<option value="' + escapeHTML(name) + '"></option>';
-  }).join('');
-  updatePromoOptions();
-};
-const updatePromoOptions = function (preserveSelected) {
-  const select = $('pricePromo');
-  if (!select) return;
-  const previous = preserveSelected === undefined ? select.value : preserveSelected;
-  const query = normalize($('priceStore').value);
-  const matches = promotions.map(function (promo, index) { return { promo: promo, index: index }; }).filter(function (entry) {
-    if (!query) return true;
-    return normalize(promotionTitle(entry.promo) + ' ' + entry.promo.desc).includes(query);
-  });
-  select.innerHTML = '<option value="">Sin promoción · descuento manual</option>' + matches.map(function (entry) {
-    return '<option value="' + entry.index + '">' + escapeHTML(promotionLabel(entry.promo)) + '</option>';
-  }).join('');
-  if (previous && matches.some(function (entry) { return String(entry.index) === String(previous); })) select.value = String(previous);
-};
-$('priceStore').addEventListener('input', function () {
-  const selected = $('pricePromo').value;
-  updatePromoOptions(selected);
-});
-$('pricePromo').addEventListener('change', function () {
-  if (!this.value) {
-    $('promoDescription').textContent = 'Sin promoción elegida. Podés ingresar un descuento manual.';
-    updatePricePreview();
-    return;
-  }
-  const promo = promotions[Number(this.value)];
-  if (!promo) return;
-  $('priceStore').value = promotionTitle(promo);
-  if (promotionDiscount(promo)) $('priceDiscount').value = String(promotionDiscount(promo));
-  const conditions = [
-    promo.bankShort || promo.bankId || '',
-    Array.isArray(promo.cards) ? promo.cards.join(', ') : '',
-    Array.isArray(promo.days) ? promo.days.join(', ') : promo.when || '',
-    promo.validity || ''
-  ].filter(Boolean);
-  $('promoDescription').textContent = [promo.desc || '', conditions.join(' · ')].filter(Boolean).join(' — ').slice(0, 500) ||
-    'Promoción seleccionada. Revisá las condiciones publicadas por el banco.';
-  updatePromoOptions(this.value);
-  updatePricePreview();
-});
-
-/* ---------------------------------------------------------
-   Calculadora vinculada al post-it
-   --------------------------------------------------------- */
-const getSelectedPromo = function () {
-  const value = $('pricePromo').value;
-  return value === '' ? null : (promotions[Number(value)] || null);
-};
-const updatePricePreview = function () {
-  const price = parseAmount($('priceUnit').value);
-  const quantity = Math.max(0, parseAmount($('priceQuantity').value));
-  const subtotal = price * quantity;
-  const percent = Math.max(0, Math.min(100, parseAmount($('priceDiscount').value)));
-  const cap = Math.max(0, parseAmount($('priceCap').value));
+const calculateDiscount = function (subtotal, promo, usedCap, manualPercent) {
+  const percent = promo ? promotionDiscount(promo) : Math.max(0, Math.min(100, Number(manualPercent) || 0));
+  const cap = promo ? promotionCap(promo) : 0;
   let discount = subtotal * percent / 100;
-  if (cap > 0) discount = Math.min(discount, cap);
-  const total = Math.max(0, subtotal - discount);
-  $('previewSubtotal').textContent = formatMoney(subtotal);
-  $('previewDiscount').textContent = '− ' + formatMoney(discount);
-  $('previewTotal').textContent = formatMoney(total);
+  if (cap > 0) discount = Math.min(discount, Math.max(0, cap - usedCap));
+  return { percent: percent, cap: cap, discount: Math.min(subtotal, discount), total: Math.max(0, subtotal - discount) };
 };
-['priceUnit', 'priceQuantity', 'priceDiscount', 'priceCap'].forEach(function (id) {
-  $(id).addEventListener('input', updatePricePreview);
-});
-const openPriceDialog = function (itemId) {
-  const item = state.items.find(function (entry) { return entry.id === itemId; });
-  if (!item) return;
-  selectedItemId = itemId;
-  const last = getLastPrice(itemId);
-  $('priceProduct').value = item.name;
-  $('priceUnit').value = last ? String(last.unitPrice || '') : '';
-  $('priceQuantity').value = last ? String(last.quantity || 1) : '1';
-  $('priceStore').value = item.preferredStore || (last && last.supermarket) || '';
-  $('priceDiscount').value = last && last.discountPercent ? String(last.discountPercent) : '';
-  $('priceCap').value = '';
-  $('priceDate').value = localDate();
-  const previousPrices = state.priceHistory.filter(function (entry) { return entry.itemId === itemId; })
-    .sort(function (a, b) { return String(b.date || b.savedAt || '').localeCompare(String(a.date || a.savedAt || '')); }).slice(0, 4);
-  $('priceHistoryItem').innerHTML = previousPrices.length
-    ? '<div class="item-history-heading"><span>REFERENCIAS ANTERIORES</span><span>' + previousPrices.length + ' recientes</span></div><div class="item-history-list">' +
-      previousPrices.map(function (entry) {
-        return '<button class="history-row" type="button" data-history-id="' + escapeHTML(entry.id || '') + '">' +
-          '<span><b>' + escapeHTML(entry.supermarket || 'Supermercado no indicado') + '</b>' +
-          escapeHTML([entry.date || '', entry.bank || '', entry.discountPercent ? entry.discountPercent + '% dto.' : 'Sin descuento'].filter(Boolean).join(' · ')) +
-          '</span><strong>' + escapeHTML(formatMoney(entry.finalUnitPrice || entry.unitPrice)) + '</strong></button>';
-      }).join('') + '</div>'
-    : '<div class="history-empty">Todavía no hay precios guardados para este producto.</div>';
-  $('pricePromo').value = '';
-  $('promoDescription').textContent = 'Elegí una promoción para aplicar su porcentaje al precio. También podés ingresar el descuento manualmente.';
-  updatePromoOptions('');
-  updatePricePreview();
-  if (typeof $('priceDialog').showModal === 'function') $('priceDialog').showModal();
-  else $('priceDialog').setAttribute('open', 'open');
-  setTimeout(function () { $('priceUnit').focus(); }, 40);
+const getCalcSubtotal = function () {
+  return state.calculatorLines.reduce(function (total, line) {
+    return total + Math.max(0, Number(line.unitPrice) || 0) * Math.max(0, Number(line.quantity) || 0);
+  }, 0);
 };
-const closePriceDialog = function () {
-  if (typeof $('priceDialog').close === 'function') $('priceDialog').close();
-  else $('priceDialog').removeAttribute('open');
+const updateEquation = function () {
+  $('calculatorInput').value = state.calculatorLines.map(function (line) {
+    return Number(line.unitPrice || 0) + (Number(line.quantity || 1) === 1 ? '' : '*' + Number(line.quantity || 1));
+  }).join('+');
 };
-$('priceHistoryItem').addEventListener('click', function (event) {
-  const button = event.target.closest('[data-history-id]');
-  if (!button) return;
-  const record = state.priceHistory.find(function (entry) { return String(entry.id || '') === button.dataset.historyId; });
-  if (!record) return;
-  $('priceUnit').value = String(record.unitPrice || '');
-  $('priceQuantity').value = String(record.quantity || 1);
-  $('priceStore').value = record.supermarket || '';
-  $('priceDiscount').value = String(record.discountPercent || '');
-  $('priceCap').value = String(record.discountCap || '');
-  $('pricePromo').value = '';
-  updatePromoOptions('');
-  $('promoDescription').textContent = 'Valores copiados del registro anterior. La nueva compra se guardará con su propia fecha.';
-  updatePricePreview();
-});
-$('closePriceDialog').addEventListener('click', closePriceDialog);
-$('priceDialog').addEventListener('click', function (event) {
-  if (event.target === $('priceDialog')) closePriceDialog();
-});
-$('savePrice').addEventListener('click', function () {
+const renderCalcLines = function () {
+  const lines = state.calculatorLines;
+  $('calcLineCount').textContent = lines.length + (lines.length === 1 ? ' producto' : ' productos');
+  $('calcLinesBody').innerHTML = lines.length ? lines.map(function (line) {
+    const subtotal = Number(line.unitPrice || 0) * Number(line.quantity || 1);
+    return '<tr><td><button class="line-product" type="button" data-edit-line="' + escapeHTML(line.id) + '">' + escapeHTML(line.product || 'Producto manual') + '</button></td>' +
+      '<td>' + escapeHTML(formatMoney(line.unitPrice)) + '</td><td>' + escapeHTML(String(line.quantity)) + '</td><td><strong>' + escapeHTML(formatMoney(subtotal)) + '</strong></td>' +
+      '<td><button class="remove-line" type="button" data-remove-line="' + escapeHTML(line.id) + '" aria-label="Quitar ' + escapeHTML(line.product) + '">×</button></td></tr>';
+  }).join('') : '<tr><td colspan="5" class="table-empty">Todavía no agregaste productos. Volvé a la lista y tocá uno para comenzar.</td></tr>';
+  $('totalAmount').textContent = formatMoney(getCalcSubtotal());
+};
+const renderDiscountComparison = function () {
+  if (!$('levelSelect')) return;
+  const candidates = getPromoCandidates();
+  const selected = $('levelSelect').value;
+  const selectedStillExists = candidates.some(function (entry) { return String(entry.index) === selected; });
+  if (selected && selected !== 'manual' && !selectedStillExists) $('levelSelect').value = '';
+  const current = $('levelSelect').value;
+  const options = ['<option value="">Elegir una promoción para aplicar</option>'].concat(
+    candidates.map(function (entry) {
+      return '<option value="' + entry.index + '">' + escapeHTML(promotionLabel(entry.promo)) + '</option>';
+    })
+  );
+  options.push('<option value="manual">Descuento manual</option>');
+  $('levelSelect').innerHTML = options.join('');
+  $('levelSelect').value = options.some(function (option) { return option.indexOf('value="' + current + '"') >= 0; }) ? current : '';
+  const total = getCalcSubtotal();
+  const used = Math.max(0, parseAmount($('topeUsadoInput').value));
+  const rows = candidates.map(function (entry) {
+    const promo = entry.promo;
+    const values = calculateDiscount(total, promo, used, 0);
+    const isSelected = String(entry.index) === $('levelSelect').value;
+    const capLabel = values.cap ? formatMoney(values.cap) : 'Sin tope publicado';
+    const bank = [promo.bankShort || promo.bankId || 'Banco', (promo.cards || []).join(', ')].filter(Boolean).join(' · ');
+    return '<tr class="' + (isSelected ? 'offer-selected' : '') + '">' +
+      '<td><strong>' + escapeHTML(promotionTitle(promo)) + '</strong><small>' + escapeHTML(promo.group || promo.title || '') + '</small></td>' +
+      '<td>' + escapeHTML(bank) + '<small>' + escapeHTML((promo.days || []).join(', ') || promo.when || 'Consultar vigencia') + '</small></td>' +
+      '<td><strong>' + values.percent + '%</strong></td><td>' + escapeHTML(capLabel) + '</td>' +
+      '<td class="saving-value">' + escapeHTML(formatMoney(values.discount)) + '</td><td>' + escapeHTML(formatMoney(values.total)) + '</td>' +
+      '<td><button class="use-offer" type="button" data-use-promo="' + entry.index + '">' + (isSelected ? 'Elegida' : 'Usar') + '</button></td></tr>';
+  });
+  $('totalTable').querySelector('tbody').innerHTML = rows.join('') ||
+    '<tr><td colspan="7" class="table-empty">' + (candidates.length ? 'No hay descuentos porcentuales en estas promociones.' : 'No se encontraron descuentos para este supermercado. Podés cambiarlo o ingresar uno manual.') + '</td></tr>';
+  if ($('levelSelect').value && $('levelSelect').value !== 'manual') {
+    const promo = promotions[Number($('levelSelect').value)];
+    if (promo) $('promoDescription').textContent = [promo.desc || '', promotionLabel(promo), promo.validity || ''].filter(Boolean).join(' — ').slice(0, 650);
+  } else if ($('levelSelect').value === 'manual') {
+    $('promoDescription').textContent = 'Se aplicará el porcentaje manual indicado. No se atribuye a un banco ni a una promoción oficial.';
+  } else {
+    $('promoDescription').textContent = candidates.length + ' descuentos disponibles para ' + ($('calcStore').value.trim() || 'supermercados').toLowerCase() + '. Elegí una oferta para calcular el ahorro.';
+  }
+  updateCalculatorTotals();
+};
+const updateCalculatorTotals = function () {
+  const subtotal = getCalcSubtotal();
+  const value = $('levelSelect').value;
+  const promo = value && value !== 'manual' ? promotions[Number(value)] || null : null;
+  const manual = value === 'manual' ? parseAmount($('manualDiscountInput').value) : 0;
+  const used = Math.max(0, parseAmount($('topeUsadoInput').value));
+  const values = calculateDiscount(subtotal, promo, used, manual);
+  $('discountAmount').textContent = '− ' + formatMoney(values.discount);
+  $('finalAmount').textContent = formatMoney(values.total);
+};
+const renderCalculator = function () {
+  if (!$('calculatorView') || $('calculatorView').hidden) return;
+  renderCalcLines();
+  renderDiscountComparison();
+};
+const parseEquation = function (equation) {
+  const cleaned = String(equation || '').replace(/[^0-9+*.,]/g, '').replace(/,/g, '.');
+  const terms = cleaned.split('+').filter(Boolean);
+  return terms.map(function (term, index) {
+    const match = term.match(/^(\d+(?:\.\d+)?)(?:\*(\d+(?:\.\d+)?))?$/);
+    if (!match) return null;
+    const previous = state.calculatorLines[index] || {};
+    return Object.assign({}, previous, {
+      id: previous.id || 'manual-' + Date.now() + '-' + index,
+      itemId: previous.itemId || '',
+      product: previous.product || 'Producto manual',
+      unitPrice: Number(match[1]),
+      quantity: match[2] == null ? 1 : Number(match[2]),
+      updatedAt: Date.now()
+    });
+  }).filter(Boolean);
+};
+$('addCalcItem').addEventListener('click', function () {
   const item = state.items.find(function (entry) { return entry.id === selectedItemId; });
-  if (!item) return;
-  const unitPrice = parseAmount($('priceUnit').value);
-  const quantity = parseAmount($('priceQuantity').value);
-  if (!(unitPrice > 0)) {
-    $('priceUnit').focus();
-    showToast('Ingresá un precio válido');
-    return;
+  if (!item) { showToast('Volvé a la lista y elegí un producto'); return; }
+  const unitPrice = parseAmount($('calcUnitPrice').value);
+  const quantity = parseAmount($('calcQuantity').value);
+  if (!(unitPrice > 0)) { $('calcUnitPrice').focus(); showToast('Ingresá un precio válido'); return; }
+  if (!(quantity > 0)) { $('calcQuantity').focus(); showToast('Ingresá una cantidad válida'); return; }
+  const store = $('calcStore').value.trim();
+  state.calculatorStore = store;
+  const existing = state.calculatorLines.find(function (line) { return line.itemId === item.id; });
+  if (existing) {
+    Object.assign(existing, { product: item.name, unitPrice: unitPrice, quantity: quantity, updatedAt: Date.now() });
+  } else {
+    state.calculatorLines.push({ id: makeId(), itemId: item.id, product: item.name, unitPrice: unitPrice, quantity: quantity, updatedAt: Date.now() });
   }
-  if (!(quantity > 0)) {
-    $('priceQuantity').focus();
-    showToast('Ingresá una cantidad válida');
-    return;
-  }
-  const promo = getSelectedPromo();
-  const supermarket = $('priceStore').value.trim() || (promo ? promotionTitle(promo) : '');
-  const discountPercent = Math.max(0, Math.min(100, parseAmount($('priceDiscount').value)));
-  const discountCap = Math.max(0, parseAmount($('priceCap').value));
-  const subtotal = unitPrice * quantity;
-  let discountAmount = subtotal * discountPercent / 100;
-  if (discountCap > 0) discountAmount = Math.min(discountAmount, discountCap);
-  const total = Math.max(0, subtotal - discountAmount);
-  const record = {
-    id: makeId(),
-    itemId: item.id,
-    product: item.name,
-    unitPrice: unitPrice,
-    quantity: quantity,
-    subtotal: subtotal,
-    discountPercent: discountPercent,
-    discountCap: discountCap || null,
-    discountAmount: discountAmount,
-    total: total,
-    finalUnitPrice: total / quantity,
-    supermarket: supermarket,
-    bank: promo ? String(promo.bankShort || promo.bankId || '') : '',
-    cards: promo && Array.isArray(promo.cards) ? promo.cards.slice() : [],
-    promotionTitle: promo ? String(promo.title || promotionTitle(promo)) : '',
-    promotionDays: promo && Array.isArray(promo.days) ? promo.days.slice() : [],
-    promotionValidity: promo ? String(promo.validity || '') : '',
-    date: $('priceDate').value || localDate(),
-    savedAt: new Date().toISOString()
-  };
-  state.priceHistory.push(record);
-  if (state.priceHistory.length > 5000) state.priceHistory = state.priceHistory.slice(-5000);
-  item.updatedAt = Date.now();
-  if (supermarket) {
-    item.preferredStore = supermarket;
-    item.preferred = true;
-  }
-  closePriceDialog();
-  touchState();
-  showToast('Precio guardado en el historial');
+  selectedItemId = '';
+  $('selectedProductTitle').textContent = 'Producto agregado · elegí otro desde la lista';
+  $('calcProductGroup').textContent = 'En la sumatoria';
+  $('calcUnitPrice').value = '';
+  $('calcQuantity').value = '1';
+  $('addCalcItem').textContent = 'Agregar a la sumatoria';
+  state.updatedAt = Date.now();
+  persistLocal();
+  updateEquation();
+  renderCalculator();
+  scheduleCloudSync();
+  showToast('Producto agregado a la sumatoria');
 });
-
+$('calcStore').addEventListener('input', function () {
+  state.calculatorStore = this.value;
+  state.updatedAt = Date.now();
+  persistLocal();
+  renderDiscountComparison();
+  scheduleCloudSync();
+});
+$('calcLinesBody').addEventListener('click', function (event) {
+  const remove = event.target.closest('[data-remove-line]');
+  if (remove) {
+    state.calculatorLines = state.calculatorLines.filter(function (line) { return line.id !== remove.dataset.removeLine; });
+    state.updatedAt = Date.now();
+    persistLocal();
+    updateEquation();
+    renderCalculator();
+    scheduleCloudSync();
+    return;
+  }
+  const edit = event.target.closest('[data-edit-line]');
+  if (edit) {
+    const line = state.calculatorLines.find(function (entry) { return entry.id === edit.dataset.editLine; });
+    if (!line) return;
+    selectedItemId = line.itemId || '';
+    $('selectedProductTitle').textContent = line.product;
+    $('calcProductGroup').textContent = selectedItemId ? (state.items.find(function (item) { return item.id === selectedItemId; }) || {}).group || 'Producto guardado' : 'Producto manual';
+    $('calcUnitPrice').value = String(line.unitPrice);
+    $('calcQuantity').value = String(line.quantity);
+    $('calcLastPrice').textContent = 'Editando un producto de la sumatoria.';
+    $('addCalcItem').textContent = 'Actualizar en la sumatoria';
+    $('calcUnitPrice').focus();
+  }
+});
+$('levelSelect').addEventListener('change', function () {
+  if (this.value === 'manual') $('manualDiscountInput').focus();
+  renderDiscountComparison();
+});
+['topeUsadoInput', 'manualDiscountInput'].forEach(function (id) {
+  $(id).addEventListener('input', updateCalculatorTotals);
+});
+$('calcStore').addEventListener('change', renderDiscountComparison);
+$('totalTable').addEventListener('click', function (event) {
+  const button = event.target.closest('[data-use-promo]');
+  if (!button) return;
+  $('levelSelect').value = button.dataset.usePromo;
+  if (!$('calcStore').value.trim()) $('calcStore').value = promotionTitle(promotions[Number(button.dataset.usePromo)]);
+  state.calculatorStore = $('calcStore').value;
+  persistLocal();
+  renderDiscountComparison();
+});
+$('calculatorInput').addEventListener('input', function () {
+  const lines = parseEquation(this.value);
+  state.calculatorLines = lines;
+  state.updatedAt = Date.now();
+  persistLocal();
+  renderCalcLines();
+  renderDiscountComparison();
+  scheduleCloudSync();
+});
+$('calculatorKeys').addEventListener('click', function (event) {
+  const button = event.target.closest('[data-key]');
+  if (!button) return;
+  const key = button.dataset.key;
+  let equation = $('calculatorInput').value;
+  if (key === 'C') equation = equation.slice(0, -1);
+  else if (key === 'CE') equation = '';
+  else equation += key;
+  $('calculatorInput').value = equation;
+  $('calculatorInput').dispatchEvent(new Event('input', { bubbles: true }));
+});
+$('toggleCalculator').addEventListener('click', function () {
+  const showRule = $('reglaTresCalculator').hidden;
+  $('reglaTresCalculator').hidden = !showRule;
+  $('calculatorKeys').hidden = showRule;
+  $('calculatorInput').hidden = showRule;
+  this.textContent = showRule ? 'Volver a calculadora' : 'Regla de tres';
+});
+const calculateRuleOfThree = function () {
+  const a = parseAmount($('reglatres_a').value);
+  const b = parseAmount($('reglatres_b').value);
+  const c = parseAmount($('reglatres_c').value);
+  $('reglatres_result').value = a ? formatMoney((b * c) / a) : '';
+};
+['reglatres_a', 'reglatres_b', 'reglatres_c'].forEach(function (id) {
+  $(id).addEventListener('input', calculateRuleOfThree);
+});
+$('clearCalculator').addEventListener('click', function () {
+  if (!state.calculatorLines.length) return;
+  state.calculatorLines = [];
+  state.updatedAt = Date.now();
+  persistLocal();
+  updateEquation();
+  renderCalculator();
+  scheduleCloudSync();
+  showToast('Sumatoria vaciada');
+});
+const selectedCalculation = function () {
+  const value = $('levelSelect').value;
+  const promo = value && value !== 'manual' ? promotions[Number(value)] || null : null;
+  const manual = value === 'manual' ? parseAmount($('manualDiscountInput').value) : 0;
+  return { promo: promo, values: calculateDiscount(getCalcSubtotal(), promo, parseAmount($('topeUsadoInput').value), manual) };
+};
+$('saveCalcPrices').addEventListener('click', function () {
+  if (!state.calculatorLines.length) { showToast('Agregá productos antes de guardar'); return; }
+  const selected = selectedCalculation();
+  const store = $('calcStore').value.trim() || (selected.promo ? promotionTitle(selected.promo) : '');
+  const subtotal = getCalcSubtotal();
+  const appliedDiscount = selected.values.discount;
+  const date = localDate();
+  state.calculatorLines.forEach(function (line) {
+    const lineSubtotal = Number(line.unitPrice) * Number(line.quantity);
+    const portion = subtotal > 0 ? appliedDiscount * (lineSubtotal / subtotal) : 0;
+    const finalTotal = Math.max(0, lineSubtotal - portion);
+    const promo = selected.promo;
+    state.priceHistory.push({
+      id: makeId(), itemId: line.itemId || '', product: line.product,
+      unitPrice: Number(line.unitPrice), quantity: Number(line.quantity),
+      subtotal: lineSubtotal, discountPercent: selected.values.percent,
+      discountCap: selected.values.cap || null, discountAmount: portion,
+      total: finalTotal, finalUnitPrice: finalTotal / Math.max(.000001, Number(line.quantity)),
+      supermarket: store,
+      bank: promo ? String(promo.bankShort || promo.bankId || '') : '',
+      cards: promo && Array.isArray(promo.cards) ? promo.cards.slice() : [],
+      promotionTitle: promo ? String(promo.group || promo.title || promotionTitle(promo)) : '',
+      promotionDays: promo && Array.isArray(promo.days) ? promo.days.slice() : [],
+      promotionValidity: promo ? String(promo.validity || '') : '',
+      date: date, savedAt: new Date().toISOString()
+    });
+    if (line.itemId) {
+      const item = state.items.find(function (entry) { return entry.id === line.itemId; });
+      if (item && store && !item.preferredStore) item.preferredStore = store;
+    }
+  });
+  if (state.priceHistory.length > 5000) state.priceHistory = state.priceHistory.slice(-5000);
+  state.updatedAt = Date.now();
+  persistLocal();
+  renderList();
+  renderCalculator();
+  scheduleCloudSync();
+  showToast(state.calculatorLines.length + ' precios guardados en el historial');
+});
+$('exportCalcCsv').addEventListener('click', function () {
+  const headers = ['Producto', 'Precio unitario', 'Cantidad', 'Subtotal', 'Supermercado', 'Promoción elegida', 'Banco', 'Descuento %', 'Tope', 'Ahorro estimado', 'Total estimado', 'Fecha'];
+  const chosen = selectedCalculation();
+  const store = $('calcStore').value.trim();
+  const rows = [headers].concat(state.calculatorLines.map(function (line) {
+    const total = Number(line.unitPrice) * Number(line.quantity);
+    const share = getCalcSubtotal() > 0 ? chosen.values.discount * (total / getCalcSubtotal()) : 0;
+    return [line.product, line.unitPrice, line.quantity, total, store,
+      chosen.promo ? (chosen.promo.group || chosen.promo.title || '') : 'Descuento manual/sin promo',
+      chosen.promo ? (chosen.promo.bankShort || chosen.promo.bankId || '') : '',
+      chosen.values.percent, chosen.values.cap || '', share, total - share, localDate()];
+  }));
+  const csv = '\uFEFF' + rows.map(function (row) { return row.map(csvCell).join(';'); }).join('\r\n');
+  downloadFile('sumatoria-compra-' + localDate() + '.csv', csv, 'text/csv;charset=utf-8');
+});
 /* ---------------------------------------------------------
    Exportación e importación
    --------------------------------------------------------- */
@@ -789,6 +947,7 @@ const mergeStates = function (local, remote) {
   items.forEach(function (item, id) {
     if (!DEFAULT_ITEMS.some(function (base) { return base.id === id; })) ordered.push(item);
   });
+  const calculatorLines = Number(left.updatedAt || 0) >= Number(right.updatedAt || 0) ? left.calculatorLines : right.calculatorLines;
   const history = new Map();
   right.priceHistory.forEach(function (entry) { history.set(entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'), entry); });
   left.priceHistory.forEach(function (entry) { history.set(entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'), entry); });
@@ -798,6 +957,8 @@ const mergeStates = function (local, remote) {
     themeUpdatedAt: Math.max(Number(left.themeUpdatedAt) || 0, Number(right.themeUpdatedAt) || 0),
     updatedAt: Math.max(Number(left.updatedAt) || 0, Number(right.updatedAt) || 0),
     items: ordered,
+    calculatorLines: calculatorLines,
+    calculatorStore: Number(left.updatedAt || 0) >= Number(right.updatedAt || 0) ? left.calculatorStore : right.calculatorStore,
     priceHistory: Array.from(history.values()).sort(function (a, b) {
       return String(a.date || a.savedAt || '').localeCompare(String(b.date || b.savedAt || ''));
     }).slice(-5000)
@@ -812,6 +973,8 @@ const sameState = function (a, b) {
       items: normalized.items.map(function (item) {
         return [item.id, !!item.checked, !!item.priority, !!item.preferred, item.preferredStore || '', Number(item.updatedAt) || 0];
       }),
+      calculatorStore: normalized.calculatorStore,
+      calculatorLines: normalized.calculatorLines.map(function (line) { return [line.id, line.itemId, line.product, line.unitPrice, line.quantity, line.updatedAt]; }),
       history: normalized.priceHistory.map(function (entry) { return entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'); }).sort()
     });
   };
@@ -1002,5 +1165,5 @@ document.addEventListener('keydown', function (event) {
     event.preventDefault();
     $('searchInput').focus();
   }
-  if (event.key === 'Escape' && $('priceDialog').open) closePriceDialog();
+  if (event.key === 'Escape' && !$('calculatorView').hidden) setView('list');
 });
