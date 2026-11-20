@@ -37,3 +37,9 @@ python3 -m http.server 8080
 ```
 
 Abrí `http://localhost:8080`.
+
+
+## Gestión de listas y promociones
+Los grupos y productos de cada post-it se pueden crear, renombrar y eliminar desde iconos compactos integrados en las tarjetas. Las eliminaciones se conservan al sincronizar la lista entre dispositivos.
+
+El buscador de comercio consulta el catálogo completo de PromoScraper PY y ordena primero las coincidencias de supermercados. Al encontrar un comercio, propone automáticamente la tarjeta/beneficio con mejor porcentaje; el selector contiguo permite elegir otro beneficio manualmente. El total a pagar en caja se destaca por encima del reintegro estimado, que puede acreditarse posteriormente.

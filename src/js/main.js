@@ -113,46 +113,35 @@ const makeDefaultItems = function () {
 };
 const DEFAULT_ITEMS = makeDefaultItems();
 const defaultState = function () {
-  return { version: 1, theme: 'light', themeUpdatedAt: 0, updatedAt: 0, items: DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); }), calculatorLines: [], calculatorStore: '', priceHistory: [] };
+  return { version: 1, theme: 'light', themeUpdatedAt: 0, updatedAt: 0,
+    groups: DEFAULT_GROUPS.map(function (group) { return group.name; }),
+    deletedGroupNames: [], deletedItemIds: [],
+    items: DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); }),
+    calculatorLines: [], calculatorStore: '', priceHistory: [] };
 };
 const normalizeState = function (raw) {
   const source = raw && typeof raw === 'object' ? raw : {};
-  const incoming = Array.isArray(source.items) ? source.items : [];
-  const valid = incoming.filter(function (item) {
-    return item && typeof item === 'object' && typeof item.name === 'string' && item.name.trim();
+  const incoming = Array.isArray(source.items) ? source.items : DEFAULT_ITEMS;
+  const deletedItemIds = Array.from(new Set((Array.isArray(source.deletedItemIds) ? source.deletedItemIds : []).map(String)));
+  const deletedGroupNames = Array.from(new Set((Array.isArray(source.deletedGroupNames) ? source.deletedGroupNames : []).map(String)));
+  const deletedItems = new Set(deletedItemIds), deletedGroups = new Set(deletedGroupNames), byId = new Map();
+  incoming.filter(function (item) { return item && typeof item === 'object' && typeof item.name === 'string' && item.name.trim(); }).forEach(function (item) {
+    const group = String(item.group || 'Otros'), name = String(item.name).trim(), id = String(item.id || idFor(group, name));
+    if (!deletedItems.has(id) && !deletedGroups.has(group)) byId.set(id, Object.assign({}, item, { id: id, group: group, name: name }));
   });
-  const byId = new Map();
-  valid.forEach(function (item) {
-    const group = String(item.group || 'Otros');
-    const name = String(item.name).trim();
-    const id = String(item.id || idFor(group, name));
-    byId.set(id, Object.assign({}, item, { id: id, group: group, name: name }));
-  });
-  const items = DEFAULT_ITEMS.map(function (base) {
-    return Object.assign({}, base, byId.get(base.id) || {});
-  });
-  const defaultIds = new Set(DEFAULT_ITEMS.map(function (item) { return item.id; }));
-  valid.forEach(function (item) {
-    const group = String(item.group || 'Otros');
-    const name = String(item.name).trim();
-    const id = String(item.id || idFor(group, name));
-    if (!defaultIds.has(id)) {
-      items.push(Object.assign({
-        checked: false, priority: false, preferred: false, preferredStore: '', updatedAt: 0
-      }, item, { id: id, group: group, name: name }));
-    }
-  });
+  const items = Array.from(byId.values());
+  const sourceGroups = Array.isArray(source.groups) ? source.groups : DEFAULT_GROUPS.map(function (group) { return group.name; }).concat(items.map(function (item) { return item.group; }));
+  const groups = Array.from(new Set(sourceGroups.map(function (name) { return String(name || '').trim(); }).filter(Boolean))).filter(function (name) { return !deletedGroups.has(name); });
+  items.forEach(function (item) { if (!groups.includes(item.group) && !deletedGroups.has(item.group)) groups.push(item.group); });
   return {
-    version: 1,
-    theme: source.theme === 'dark' ? 'dark' : 'light',
-    themeUpdatedAt: Number(source.themeUpdatedAt) || 0,
-    updatedAt: Number(source.updatedAt) || 0,
-    items: items,
-    calculatorLines: Array.isArray(source.calculatorLines) ? source.calculatorLines.filter(function (line) { return line && typeof line === 'object' && typeof line.product === 'string'; }).map(function (line, index) { return Object.assign({}, line, { id: String(line.id || ('calc-' + index + '-' + slug(line.product))), itemId: String(line.itemId || ''), unitPrice: Number(line.unitPrice) || 0, quantity: Number(line.quantity) || 1, updatedAt: Number(line.updatedAt) || 0 }); }) : [],
+    version: 1, theme: source.theme === 'dark' ? 'dark' : 'light',
+    themeUpdatedAt: Number(source.themeUpdatedAt) || 0, updatedAt: Number(source.updatedAt) || 0,
+    groups: groups, deletedGroupNames: deletedGroupNames, deletedItemIds: deletedItemIds, items: items,
+    calculatorLines: Array.isArray(source.calculatorLines) ? source.calculatorLines.filter(function (line) { return line && typeof line === 'object' && typeof line.product === 'string'; }).map(function (line, index) {
+      return Object.assign({}, line, { id: String(line.id || ('calc-' + index + '-' + slug(line.product))), itemId: String(line.itemId || ''), unitPrice: Number(line.unitPrice) || 0, quantity: Number(line.quantity) || 1, updatedAt: Number(line.updatedAt) || 0 });
+    }) : [],
     calculatorStore: String(source.calculatorStore || ''),
-    priceHistory: Array.isArray(source.priceHistory) ? source.priceHistory.filter(function (entry) {
-      return entry && typeof entry === 'object' && typeof entry.itemId === 'string';
-    }) : []
+    priceHistory: Array.isArray(source.priceHistory) ? source.priceHistory.filter(function (entry) { return entry && typeof entry === 'object' && typeof entry.itemId === 'string'; }) : []
   };
 };
 
@@ -252,69 +241,54 @@ const ICON_FLAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m
 const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3z"></path></svg>';
 const renderItem = function (item) {
   const last = getLastPrice(item.id);
-  const priceHint = last
-    ? '<span class="product-price-hint"><strong>' + escapeHTML(formatMoney(last.finalUnitPrice || last.total)) + '</strong>' + (last.supermarket ? ' · ' + escapeHTML(last.supermarket) : '') + '</span>'
-    : '';
+  const priceHint = last ? '<span class="product-price-hint"><strong>' + escapeHTML(formatMoney(last.finalUnitPrice || last.total)) + '</strong>' + (last.supermarket ? ' · ' + escapeHTML(last.supermarket) : '') + '</span>' : '';
   return '<article class="product-row' + (item.checked ? ' is-done' : '') + '" data-item-id="' + escapeHTML(item.id) + '">' +
     '<label class="product-check"><input type="checkbox" data-check="' + escapeHTML(item.id) + '" ' + (item.checked ? 'checked' : '') + ' aria-label="Marcar ' + escapeHTML(item.name) + ' como comprado"></label>' +
-    '<button class="product-main" type="button" data-open-calculator="' + escapeHTML(item.id) + '" title="' + escapeHTML(item.name) + '">' +
-      '<span class="product-name">' + escapeHTML(item.name) + '</span>' + priceHint +
-    '</button>' +
+    '<button class="product-main" type="button" data-open-calculator="' + escapeHTML(item.id) + '" title="' + escapeHTML(item.name) + '"><span class="product-name">' + escapeHTML(item.name) + '</span>' + priceHint + '</button>' +
     '<div class="product-actions">' +
-      '<button class="tag-button priority" type="button" data-priority="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.priority) + '" aria-label="Prioridad: ' + escapeHTML(item.name) + '" title="Prioridad">' + ICON_FLAG + '<span class="tag-label">Prioridad</span></button>' +
-      '<button class="tag-button preferred" type="button" data-preferred="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.preferred) + '" aria-label="Preferido: ' + escapeHTML(item.name) + '" title="Preferido">' + ICON_STAR + '<span class="tag-label">Preferido</span></button>' +
-    '</div></article>';
+    '<button class="tag-button priority" type="button" data-priority="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.priority) + '" aria-label="Prioridad: ' + escapeHTML(item.name) + '" title="Prioridad">' + ICON_FLAG + '<span class="tag-label">Prioridad</span></button>' +
+    '<button class="tag-button preferred" type="button" data-preferred="' + escapeHTML(item.id) + '" aria-pressed="' + String(!!item.preferred) + '" aria-label="Preferido: ' + escapeHTML(item.name) + '" title="Preferido">' + ICON_STAR + '<span class="tag-label">Preferido</span></button>' +
+    '<button class="icon-action item-crud-action" type="button" data-edit-item="' + escapeHTML(item.id) + '" aria-label="Editar ' + escapeHTML(item.name) + '" title="Editar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4z"></path></svg></button>' +
+    '<button class="icon-action item-crud-action danger-action" type="button" data-delete-item="' + escapeHTML(item.id) + '" aria-label="Eliminar ' + escapeHTML(item.name) + '" title="Eliminar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"></path></svg></button></div></article>';
 };
 const renderList = function () {
-  const container = $('listContainer');
-  if (!container) return;
+  const container = $('listContainer'); if (!container) return;
   const query = normalize($('searchInput').value);
   const filtered = state.items.filter(function (item) {
     const matchesText = !query || normalize(item.name + ' ' + item.group).includes(query);
-    const matchesFilter = activeFilter === 'all' ||
-      (activeFilter === 'pending' && !item.checked) ||
-      (activeFilter === 'done' && item.checked) ||
-      (activeFilter === 'priority' && item.priority);
+    const matchesFilter = activeFilter === 'all' || (activeFilter === 'pending' && !item.checked) || (activeFilter === 'done' && item.checked) || (activeFilter === 'priority' && item.priority);
     return matchesText && matchesFilter;
   });
-  const checkedTotal = state.items.filter(function (item) { return item.checked; }).length;
-  const total = state.items.length;
-  const pending = total - checkedTotal;
+  const checkedTotal = state.items.filter(function (item) { return item.checked; }).length, total = state.items.length, pending = total - checkedTotal;
   $('progressNumber').textContent = checkedTotal + '/' + total;
   $('progressText').textContent = pending === 0 ? 'Lista completa' : countLabel(pending, 'pendiente', 'pendientes');
-  $('progressBar').style.width = (total ? (checkedTotal / total) * 100 : 0) + '%';
+  $('progressBar').style.width = (total ? checkedTotal / total * 100 : 0) + '%';
   let resultLabel = countLabel(filtered.length, 'producto', 'productos');
   if (query) resultLabel = countLabel(filtered.length, 'resultado', 'resultados');
   else if (activeFilter === 'pending') resultLabel = countLabel(filtered.length, 'pendiente', 'pendientes');
   else if (activeFilter === 'priority') resultLabel = filtered.length + ' con prioridad';
   else if (activeFilter === 'done') resultLabel = countLabel(filtered.length, 'comprado', 'comprados');
   $('resultCount').textContent = resultLabel;
-
-  const groups = DEFAULT_GROUPS.map(function (group) { return group.name; });
-  state.items.forEach(function (item) { if (!groups.includes(item.group)) groups.push(item.group); });
-  if (!listInitialized) {
-    listInitialized = true;
-    if (window.matchMedia('(min-width: 700px)').matches) groups.forEach(function (name) { openGroupNames.add(name); });
-  }
+  const groups = Array.from(new Set((state.groups || []).concat(state.items.map(function (item) { return item.group; }))));
+  if (!listInitialized) { listInitialized = true; if (window.matchMedia('(min-width: 700px)').matches) groups.forEach(function (name) { openGroupNames.add(name); }); }
   const forceOpen = !!query || activeFilter !== 'all';
-  const html = groups.map(function (groupName) {
-    const items = filtered.filter(function (item) { return item.group === groupName; });
-    if (!items.length) return '';
-    const doneCount = items.filter(function (item) { return item.checked; }).length;
-    const isOpen = forceOpen || openGroupNames.has(groupName);
-    const isComplete = items.length > 0 && doneCount === items.length;
-    return '<details class="postit-group' + (isComplete ? ' is-complete' : '') + '" data-group="' + escapeHTML(groupName) + '"' + (isOpen ? ' open' : '') + '>' +
-      '<summary class="postit-head"><span class="postit-title-wrap"><h2>' + escapeHTML(shortGroup(groupName)) + '</h2></span>' +
-      '<span class="postit-progress">' + doneCount + '/' + items.length + '</span></summary>' +
-      '<div class="postit-items">' + items.map(renderItem).join('') + '</div>' +
-    '</details>';
-  }).join('');
-  container.innerHTML = html || '<div class="empty-state">No hay productos que coincidan.</div>';
+  container.innerHTML = groups.map(function (groupName) {
+    const allItems = state.items.filter(function (item) { return item.group === groupName; }), items = filtered.filter(function (item) { return item.group === groupName; });
+    if (!items.length && (query || activeFilter !== 'all')) return '';
+    const doneCount = allItems.filter(function (item) { return item.checked; }).length;
+    const isOpen = forceOpen || openGroupNames.has(groupName), complete = allItems.length > 0 && doneCount === allItems.length;
+    return '<details class="postit-group' + (complete ? ' is-complete' : '') + '" data-group="' + escapeHTML(groupName) + '"' + (isOpen ? ' open' : '') + '>' +
+      '<summary class="postit-head"><span class="postit-title-wrap"><h2>' + escapeHTML(shortGroup(groupName)) + '</h2></span><span class="postit-progress">' + doneCount + '/' + allItems.length + '</span></summary>' +
+      '<div class="postit-controls" aria-label="Acciones del grupo">' +
+      '<button class="icon-action" type="button" data-add-item="' + escapeHTML(groupName) + '" aria-label="Agregar producto" title="Agregar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>' +
+      '<button class="icon-action" type="button" data-edit-group="' + escapeHTML(groupName) + '" aria-label="Editar grupo" title="Editar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4z"></path></svg></button>' +
+      '<button class="icon-action danger-action" type="button" data-delete-group="' + escapeHTML(groupName) + '" aria-label="Eliminar grupo" title="Eliminar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"></path></svg></button></div>' +
+      '<div class="postit-items">' + (items.length ? items.map(renderItem).join('') : '<p class="empty-group">Grupo vacío. Agregá un producto con +.</p>') + '</div></details>';
+  }).join('') || '<div class="empty-state">No hay productos que coincidan.</div>';
   const productOptions = $('shoppingProductOptions');
   if (productOptions) productOptions.innerHTML = state.items.map(function (item) { return '<option value="' + escapeHTML(item.name) + '"></option>'; }).join('');
   $('historyCount').textContent = state.priceHistory.length + (state.priceHistory.length === 1 ? ' registro' : ' registros');
-  $('listFooter').hidden = checkedTotal === 0;
-  setSyncStatus(session ? 'account' : 'local');
+  $('listFooter').hidden = checkedTotal === 0; setSyncStatus(session ? 'account' : 'local');
 };
 const touchState = function () {
   state.updatedAt = Math.max(Date.now(), (Number(state.updatedAt) || 0) + 1);
@@ -329,7 +303,82 @@ const updateItem = function (id, patch) {
   Object.assign(item, patch, { updatedAt: Date.now() });
   touchState();
 };
+let crudIntent = null;
+const openCrudDialog = function (type, groupName, itemId) {
+  const item = itemId ? state.items.find(function (entry) { return entry.id === itemId; }) : null;
+  crudIntent = { type: type, groupName: groupName || '', itemId: itemId || '' };
+  const titles = { 'group-add': 'Nuevo grupo', 'group-edit': 'Editar grupo', 'item-add': 'Nuevo producto', 'item-edit': 'Editar producto' };
+  $('crudTitle').textContent = titles[type] || 'Editar';
+  $('crudLabel').textContent = type.indexOf('group-') === 0 ? 'Nombre del grupo' : 'Nombre del producto';
+  $('crudInput').value = type === 'group-edit' ? groupName : type === 'item-edit' ? item && item.name || '' : '';
+  $('crudHint').textContent = type === 'item-add' ? 'Se agregará dentro de «' + groupName + '».' : '';
+  $('crudDialog').showModal(); window.setTimeout(function () { $('crudInput').focus(); $('crudInput').select(); }, 0);
+};
+const closeCrudDialog = function () { crudIntent = null; $('crudDialog').close(); };
+$('addGroupButton').addEventListener('click', function () { openCrudDialog('group-add'); });
+$('crudClose').addEventListener('click', closeCrudDialog);
+$('crudCancel').addEventListener('click', closeCrudDialog);
+$('crudDialog').addEventListener('click', function (event) { if (event.target === $('crudDialog')) closeCrudDialog(); });
+$('crudForm').addEventListener('submit', function (event) {
+  event.preventDefault(); if (!crudIntent) return;
+  const value = $('crudInput').value.trim(); if (!value) { $('crudInput').focus(); return; }
+  const now = Date.now();
+  if (crudIntent.type === 'group-add') {
+    if (state.groups.some(function (name) { return normalize(name) === normalize(value); })) { $('crudHint').textContent = 'Ya existe un grupo con ese nombre.'; return; }
+    state.groups.push(value); state.deletedGroupNames = state.deletedGroupNames.filter(function (name) { return name !== value; });
+    openGroupNames.add(value); closeCrudDialog(); touchState(); showToast('Grupo agregado'); return;
+  }
+  if (crudIntent.type === 'group-edit') {
+    const previous = crudIntent.groupName;
+    if (normalize(previous) !== normalize(value) && state.groups.some(function (name) { return normalize(name) === normalize(value); })) { $('crudHint').textContent = 'Ya existe un grupo con ese nombre.'; return; }
+    state.groups = state.groups.map(function (name) { return name === previous ? value : name; });
+    state.items.forEach(function (item) { if (item.group === previous) { item.group = value; item.updatedAt = now; } });
+    state.deletedGroupNames = Array.from(new Set(state.deletedGroupNames.concat([previous]))).filter(function (name) { return name !== value; });
+    openGroupNames.delete(previous); openGroupNames.add(value); closeCrudDialog(); touchState(); showToast('Grupo actualizado'); return;
+  }
+  if (crudIntent.type === 'item-add') {
+    const groupName = crudIntent.groupName;
+    if (!state.groups.includes(groupName)) return;
+    if (state.items.some(function (item) { return item.group === groupName && normalize(item.name) === normalize(value); })) { $('crudHint').textContent = 'Ese producto ya existe en el grupo.'; return; }
+    state.items.push({ id: 'item-' + makeId(), name: value, group: groupName, checked: false, priority: false, preferred: false, preferredStore: '', updatedAt: now });
+    openGroupNames.add(groupName); closeCrudDialog(); touchState(); showToast('Producto agregado'); return;
+  }
+  if (crudIntent.type === 'item-edit') {
+    const item = state.items.find(function (entry) { return entry.id === crudIntent.itemId; }); if (!item) return;
+    if (state.items.some(function (entry) { return entry.id !== item.id && entry.group === item.group && normalize(entry.name) === normalize(value); })) { $('crudHint').textContent = 'Ya existe un producto con ese nombre en este grupo.'; return; }
+    item.name = value; item.updatedAt = now;
+    state.calculatorLines.forEach(function (line) { if (line.itemId === item.id) line.product = value; });
+    closeCrudDialog(); touchState(); showToast('Producto actualizado');
+  }
+});
+
 $('listContainer').addEventListener('click', function (event) {
+  const addItem = event.target.closest('[data-add-item]');
+  if (addItem) { openCrudDialog('item-add', addItem.dataset.addItem); return; }
+  const editGroup = event.target.closest('[data-edit-group]');
+  if (editGroup) { openCrudDialog('group-edit', editGroup.dataset.editGroup); return; }
+  const deleteGroup = event.target.closest('[data-delete-group]');
+  if (deleteGroup) {
+    const name = deleteGroup.dataset.deleteGroup, members = state.items.filter(function (item) { return item.group === name; });
+    if (!window.confirm('Eliminar el grupo «' + name + '» y sus ' + members.length + ' productos? El historial se conservará.')) return;
+    state.deletedGroupNames = Array.from(new Set(state.deletedGroupNames.concat([name])));
+    members.forEach(function (item) { state.deletedItemIds = Array.from(new Set(state.deletedItemIds.concat([item.id]))); });
+    state.items = state.items.filter(function (item) { return item.group !== name; });
+    state.calculatorLines.forEach(function (line) { if (members.some(function (item) { return item.id === line.itemId; })) line.itemId = ''; });
+    state.groups = state.groups.filter(function (group) { return group !== name; });
+    openGroupNames.delete(name); touchState(); showToast('Grupo eliminado'); return;
+  }
+  const editItem = event.target.closest('[data-edit-item]');
+  if (editItem) { const item = state.items.find(function (entry) { return entry.id === editItem.dataset.editItem; }); if (item) openCrudDialog('item-edit', item.group, item.id); return; }
+  const deleteItem = event.target.closest('[data-delete-item]');
+  if (deleteItem) {
+    const id = deleteItem.dataset.deleteItem, item = state.items.find(function (entry) { return entry.id === id; });
+    if (!item || !window.confirm('Eliminar «' + item.name + '» de la lista?')) return;
+    state.deletedItemIds = Array.from(new Set(state.deletedItemIds.concat([id])));
+    state.items = state.items.filter(function (entry) { return entry.id !== id; });
+    state.calculatorLines.forEach(function (line) { if (line.itemId === id) line.itemId = ''; });
+    touchState(); showToast('Producto eliminado'); return;
+  }
   const priority = event.target.closest('[data-priority]');
   if (priority) {
     const id = priority.dataset.priority;
@@ -427,21 +476,12 @@ const openCalculatorForItem = function (itemId) {
     : '';
   $('addCalcItem').textContent = previous ? 'Actualizar' : 'Agregar';
   if (item.preferredStore) {
-    let option = Array.from($('storeSelect').options).find(function (entry) {
-      return normalize(entry.value) === normalize(item.preferredStore);
-    });
-    if (!option) {
-      option = document.createElement('option');
-      option.value = item.preferredStore;
-      option.textContent = item.preferredStore;
-      $('storeSelect').appendChild(option);
-    }
-    $('storeSelect').value = option.value;
-    if (state.calculatorStore !== option.value) {
-      state.calculatorStore = option.value;
+    $('storeSelect').value = item.preferredStore;
+    if (state.calculatorStore !== item.preferredStore) {
+      state.calculatorStore = item.preferredStore;
       stateLineChanged();
     }
-    populateDiscountSelect();
+    populateDiscountSelect(true);
   }
   setView('calculator');
   setTimeout(function () { $('calcUnitPrice').focus(); }, 40);
@@ -516,7 +556,7 @@ const normalizePromoCap = function (promo) {
 const promotionDiscount = function (promo) {
   const direct = Number(promo && promo.discount_percent);
   if (Number.isFinite(direct) && direct > 0 && direct <= 100) return direct;
-  const text = String((promo && promo.title) || '') + ' ' + String((promo && promo.desc) || '');
+  const text = [promo && promo.title, promo && promo.desc].concat(Array.isArray(promo && promo.cards) ? promo.cards : []).join(' ');
   const match = text.match(/(\d{1,2}(?:[.,]\d+)?)\s*%\s*(?:off|descuento|dto|reintegro|cashback|dscto)?/i);
   const value = match ? Number(match[1].replace(',', '.')) : 0;
   return value > 0 && value <= 100 ? value : 0;
@@ -547,17 +587,35 @@ const promotionLabel = function (promo) {
   const days = Array.isArray(promo.days) && promo.days.length ? ' · ' + promo.days.join(', ') : promo.when ? ' · ' + promo.when : '';
   return promotionBankLabel(promo) + ' · ' + (percent ? percent + '%' : 'beneficio') + cards + days;
 };
+const getPromoSearchText = function (promo) {
+  return normalize([
+    promotionStore(promo), promo && promo.title, promo && promo.desc, promo && promo.group,
+    promo && promo.category, promo && promo.bankShort, promo && promo.bankId,
+    Array.isArray(promo && promo.cards) ? promo.cards.join(' ') : '',
+    Array.isArray(promo && promo.days) ? promo.days.join(' ') : '', promo && promo.when, promo && promo.validity
+  ].join(' '));
+};
+const promoSearchScore = function (promo, query) {
+  const store = normalize(promotionStore(promo)), title = normalize(promo && promo.title), full = getPromoSearchText(promo);
+  if (!query) return 0;
+  if (store === query || title === query) return 1000;
+  if (store.startsWith(query) || title.startsWith(query)) return 900;
+  if (store.includes(query) || title.includes(query)) return 800;
+  const tokens = query.split(' ').filter(Boolean);
+  const matched = tokens.filter(function (token) { return full.includes(token); }).length;
+  return tokens.length && matched === tokens.length ? 600 : matched ? 300 + matched : 0;
+};
 const getStorePromotions = function () {
-  const selected = normalize($('storeSelect').value);
-  return promotions.map(function (promo, index) { return { promo: promo, index: index }; })
-    .filter(function (entry) {
-      if (!isSupermarketPromo(entry.promo) || !promotionDiscount(entry.promo)) return false;
-      return !selected || normalize(promotionStore(entry.promo)) === selected;
-    })
-    .sort(function (a, b) {
-      return promotionDiscount(b.promo) - promotionDiscount(a.promo) ||
-        promotionBankLabel(a.promo).localeCompare(promotionBankLabel(b.promo));
-    });
+  const query = normalize($('storeSelect').value);
+  return promotions.map(function (promo, index) {
+    return { promo: promo, index: index, supermarket: isSupermarketPromo(promo), score: promoSearchScore(promo, query) };
+  }).filter(function (entry) {
+    return promotionDiscount(entry.promo) > 0 && (query ? entry.score > 0 : entry.supermarket);
+  }).sort(function (a, b) {
+    return Number(b.supermarket) - Number(a.supermarket) || b.score - a.score ||
+      promotionDiscount(b.promo) - promotionDiscount(a.promo) ||
+      promotionBankLabel(a.promo).localeCompare(promotionBankLabel(b.promo));
+  });
 };
 const updatePromoStatus = function (mode) {
   const element = $('promoStatus');
@@ -574,69 +632,61 @@ const updatePromoStatus = function (mode) {
 };
 const populateStoreSelect = function () {
   const current = state.calculatorStore || $('storeSelect').value || '';
-  const names = Array.from(new Map(promotions
-    .filter(isSupermarketPromo)
-    .map(function (promo) { return [normalize(promotionStore(promo)), promotionStore(promo)]; })
-  ).values()).sort(function (a, b) { return a.localeCompare(b); });
-  if (current && !names.some(function (name) { return normalize(name) === normalize(current); })) names.push(current);
-  $('storeSelect').innerHTML = '<option value="">Todos</option>' + names.map(function (name) {
-    return '<option value="' + escapeHTML(name) + '">' + escapeHTML(name) + '</option>';
+  const byStore = new Map();
+  promotions.forEach(function (promo) {
+    const store = promotionStore(promo); if (!store) return;
+    const key = normalize(store), candidate = { store: store, promo: promo, supermarket: isSupermarketPromo(promo), percent: promotionDiscount(promo) };
+    const previous = byStore.get(key);
+    if (!previous || Number(candidate.supermarket) > Number(previous.supermarket) ||
+        (candidate.supermarket === previous.supermarket && candidate.percent > previous.percent)) byStore.set(key, candidate);
+  });
+  const options = Array.from(byStore.values()).sort(function (a, b) {
+    return Number(b.supermarket) - Number(a.supermarket) || a.store.localeCompare(b.store);
+  });
+  $('storeOptions').innerHTML = options.map(function (entry) {
+    const cards = Array.isArray(entry.promo.cards) && entry.promo.cards.length ? ' · ' + entry.promo.cards.join(', ') : '';
+    const detail = (entry.supermarket ? 'Supermercado' : String(entry.promo.category || 'Comercio')) +
+      ' · ' + promotionBankLabel(entry.promo) + (entry.percent ? ' · ' + entry.percent + '%' : '') + cards;
+    return '<option value="' + escapeHTML(entry.store) + '" label="' + escapeHTML(detail) + '"></option>';
   }).join('');
-  if (names.some(function (name) { return normalize(name) === normalize(current); })) $('storeSelect').value = names.find(function (name) { return normalize(name) === normalize(current); });
-  else $('storeSelect').value = '';
-  state.calculatorStore = $('storeSelect').value;
-  populateDiscountSelect();
+  $('storeSelect').value = current; state.calculatorStore = current;
+  populateDiscountSelect(false);
 };
 const loadPromotions = async function () {
-  const cached = storage.get('compra.supermarket-promos.v1', null);
+  const cached = storage.get('compra.promos.v2', null);
   if (cached && Array.isArray(cached.data)) {
-    promotions = cached.data.filter(isSupermarketPromo);
-    promoLoadedAt = Number(cached.at) || 0;
-    updatePromoStatus('cached');
-    populateStoreSelect();
+    promotions = cached.data; promoLoadedAt = Number(cached.at) || 0; updatePromoStatus('cached'); populateStoreSelect();
   }
   try {
     const response = await fetch(PROMOS_URL, { cache: 'no-store' });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const data = await response.json();
     if (!Array.isArray(data)) throw new Error('Formato de promociones no válido');
-    storage.set('compra.supermarket-promos.v1', { at: Date.now(), data: data });
-    promotions = data.filter(isSupermarketPromo);
-    promoLoadedAt = Date.now();
-    updatePromoStatus('live');
-    populateStoreSelect();
-    renderCalculator();
+    storage.set('compra.promos.v2', { at: Date.now(), data: data });
+    promotions = data; promoLoadedAt = Date.now(); updatePromoStatus('live');
+    populateStoreSelect(); populateDiscountSelect(true); renderCalculator();
   } catch (error) {
     updatePromoStatus(promotions.length ? 'cached' : 'error');
-    $('promoDescription').textContent = promotions.length
-      ? 'No se pudieron actualizar las ofertas.'
-      : 'No se pudieron cargar las ofertas. Usá el descuento manual.';
+    $('promoDescription').textContent = promotions.length ? 'No se pudieron actualizar las promociones. Se usa la copia local.' : 'No se pudieron cargar las promociones. Usá el descuento manual.';
     renderDiscountTable();
   }
 };
-const populateDiscountSelect = function () {
-  const current = $('levelSelect').value || 'all';
-  const offers = getStorePromotions();
-  const groups = {};
-  offers.forEach(function (entry) {
-    const key = promotionBankLabel(entry.promo);
-    (groups[key] ||= []).push(entry);
-  });
-  let html = '<option value="all">Comparar todos</option>';
+const populateDiscountSelect = function (autoSuggest) {
+  const current = $('levelSelect').value || 'all', offers = getStorePromotions(), groups = {};
+  offers.forEach(function (entry) { const bank = promotionBankLabel(entry.promo); (groups[bank] ||= []).push(entry); });
+  let html = '<option value="all">Comparar ofertas encontradas</option>';
   if (offers.length) {
-    html += '<optgroup label="Promociones del supermercado">';
-    Object.keys(groups).sort().forEach(function (bank) {
+    html += '<optgroup label="' + (normalize($('storeSelect').value) ? 'Coincidencias de PromoScraper PY' : 'Supermercados primero') + '">';
+    const bankOrder = Array.from(new Set(offers.map(function (entry) { return promotionBankLabel(entry.promo); })));
+    bankOrder.forEach(function (bank) {
       groups[bank].forEach(function (entry) {
-        const promo = entry.promo;
-        html += '<option value="promo:' + entry.index + '">' +
-          escapeHTML(bank + ' · ' + promotionStore(promo) + ' · ' + promotionDiscount(promo) + '%') +
-        '</option>';
+        const promo = entry.promo, cards = Array.isArray(promo.cards) && promo.cards.length ? ' · ' + promo.cards.join(', ') : '';
+        html += '<option value="promo:' + entry.index + '">' + escapeHTML(bank + ' · ' + promotionDiscount(promo) + '%' + cards + ' · ' + promotionStore(promo)) + '</option>';
       });
     });
     html += '</optgroup>';
   }
-  html += '<optgroup label="Niveles originales">';
-  html += '<option value="legacy:all">Todos los niveles originales</option>';
+  html += '<optgroup label="Niveles originales"><option value="legacy:all">Todos los niveles originales</option>';
   ['General', 'Otros'].forEach(function (category) {
     html += '<option value="legacy-category:' + category + '">Todos ' + category + '</option>';
     LEGACY_LEVELS.forEach(function (level, index) {
@@ -645,9 +695,9 @@ const populateDiscountSelect = function () {
   });
   html += '</optgroup><option value="manual">Descuento manual</option>';
   $('levelSelect').innerHTML = html;
-  const valid = Array.from($('levelSelect').options).some(function (option) { return option.value === current; });
-  $('levelSelect').value = valid ? current : 'all';
-  renderDiscountTable();
+  const preferred = autoSuggest && offers.length ? 'promo:' + offers[0].index : current;
+  const valid = Array.from($('levelSelect').options).some(function (option) { return option.value === preferred; });
+  $('levelSelect').value = valid ? preferred : 'all'; renderDiscountTable();
 };
 const calculatePromoDiscount = function (total, promo, usedCap) {
   const percent = promotionDiscount(promo);
@@ -717,7 +767,7 @@ const getDiscountRows = function () {
   if (selected === 'manual') return [{
     key: 'manual', type: 'manual', name: 'Descuento manual',
     bank: 'Manual', percent: manualPercent, cap: 0,
-    saving: total * manualPercent / 100, final: total
+    saving: total * manualPercent / 100, final: total - (total * manualPercent / 100)
   }];
   if (selected.indexOf('promo:') === 0) {
     const index = Number(selected.slice(6));
@@ -762,7 +812,7 @@ const updateSummaryDiscount = function (rows) {
     active.saving = getCartTotal() * percent / 100;
     active.final = getCartTotal() - active.saving;
   }
-  $('discountAmount').textContent = '− ' + formatMoney(active.saving || 0);
+  $('discountAmount').textContent = formatMoney(active.saving || 0);
   const final = active.final == null ? getCartTotal() : active.final;
   $('finalAmount').textContent = formatMoney(final);
 };
@@ -800,8 +850,8 @@ const renderDiscountTable = function () {
     return '<article class="offer-card' + (isChosen(row) ? ' is-selected' : '') + '">' +
       '<div class="offer-top"><div class="offer-name"><strong>' + escapeHTML(row.name) + '</strong><small>' + escapeHTML(secondary(row)) + '</small></div>' +
         '<span class="offer-percent">' + formatNumber(row.percent) + '%</span></div>' +
-      '<div class="offer-math"><span>Total <strong>' + escapeHTML(formatMoney(row.final)) + '</strong></span>' +
-        '<span class="saving-value">Ahorro <strong>' + escapeHTML(formatMoney(row.saving)) + '</strong></span></div>' +
+      '<div class="offer-math"><span>Costo neto <strong>' + escapeHTML(formatMoney(row.final)) + '</strong></span>' +
+        '<span class="saving-value">Reintegro <strong>' + escapeHTML(formatMoney(row.saving)) + '</strong></span></div>' +
       '<div class="offer-foot"><small>Tope ' + escapeHTML(capText(row)) + '</small>' + action + '</div>' +
     '</article>';
   }).join('') : '<p class="offer-empty">Sin descuentos para esta selección.</p>';
@@ -811,10 +861,10 @@ const renderDiscountTable = function () {
   const offers = getStorePromotions();
   if (store) {
     $('promoDescription').textContent = offers.length
-      ? countLabel(offers.length, 'oferta', 'ofertas') + ' en ' + store + '.'
-      : 'Sin ofertas para ' + store + '.';
+      ? countLabel(offers.length, 'beneficio', 'beneficios') + ' encontrados. La primera opción prioriza supermercados; podés cambiar la tarjeta.'
+      : 'No encontramos beneficios con porcentaje para «' + store + '». Probá otro término o usá el descuento manual.';
   } else {
-    $('promoDescription').textContent = 'Elegí un supermercado o usá el descuento manual.';
+    $('promoDescription').textContent = 'Mostrando primero supermercados. Escribí un comercio para buscar en todo PromoScraper PY.';
   }
   updateSummaryDiscount(rows);
 };
@@ -834,6 +884,9 @@ const addPurchaseLine = function () {
   if (!(quantity > 0)) { $('calcQuantity').focus(); showToast('Ingresá una cantidad válida'); return; }
   const fromList = returnToListAfterAdd;
   returnToListAfterAdd = false;
+  const chosenBenefit = $('levelSelect').value || 'all';
+  const selectedPromo = chosenBenefit.indexOf('promo:') === 0 ? promotions[Number(chosenBenefit.slice(6))] : null;
+  const selectedStore = selectedPromo ? promotionStore(selectedPromo) : $('storeSelect').value;
   let linkedItem = state.items.find(function (item) { return item.id === selectedItemId; }) || null;
   if (!linkedItem) {
     linkedItem = state.items.find(function (item) { return normalize(item.name) === normalize(name); }) || null;
@@ -851,8 +904,8 @@ const addPurchaseLine = function () {
   if (linkedItem) {
     linkedItem.checked = true;
     linkedItem.updatedAt = Date.now();
-    if ($('storeSelect').value && !linkedItem.preferredStore) {
-      linkedItem.preferredStore = $('storeSelect').value;
+    if (selectedStore && !linkedItem.preferredStore) {
+      linkedItem.preferredStore = selectedStore;
       linkedItem.preferred = true;
     }
   }
@@ -882,12 +935,13 @@ $('calcProductName').addEventListener('input', function () {
     $('addCalcItem').textContent = 'Agregar';
   }
 });
-$('storeSelect').addEventListener('change', function () {
-  state.calculatorStore = this.value;
-  $('levelSelect').value = 'all';
+const refreshStoreSearch = function () {
+  state.calculatorStore = $('storeSelect').value.trim();
   stateLineChanged();
-  populateDiscountSelect();
-});
+  populateDiscountSelect(true);
+};
+$('storeSelect').addEventListener('input', refreshStoreSearch);
+$('storeSelect').addEventListener('change', refreshStoreSearch);
 $('levelSelect').addEventListener('change', renderDiscountTable);
 ['topeUsadoInput', 'manualDiscountInput'].forEach(function (id) {
   $(id).addEventListener('input', renderDiscountTable);
@@ -988,7 +1042,7 @@ $('saveCalcPrices').addEventListener('click', function () {
   const chosen = currentDiscountForSaving();
   const subtotal = getCartTotal();
   const saving = chosen.result ? chosen.result.saving : 0;
-  const store = $('storeSelect').value || (chosen.promo ? promotionStore(chosen.promo) : '');
+  const store = chosen.promo ? promotionStore(chosen.promo) : $('storeSelect').value;
   const date = localDate();
   state.calculatorLines.forEach(function (line) {
     const lineSubtotal = Number(line.unitPrice) * Number(line.quantity);
@@ -1033,7 +1087,7 @@ const exportCalculatorCSV = function () {
     const subtotal = Number(line.unitPrice) * Number(line.quantity);
     const saving = getCartTotal() > 0 && chosen.result ? chosen.result.saving * subtotal / getCartTotal() : 0;
     rows.push([
-      line.product, line.unitPrice, line.quantity, subtotal, $('storeSelect').value,
+      line.product, line.unitPrice, line.quantity, subtotal, chosen.promo ? promotionStore(chosen.promo) : $('storeSelect').value,
       chosen.promo ? promotionBankLabel(chosen.promo) : '',
       chosen.promo ? chosen.promo.title : chosen.result ? chosen.result.name : '',
       chosen.percent, saving, subtotal - saving, localDate()
@@ -1182,29 +1236,28 @@ const readCloudProfile = async function (token) {
   return rows && rows[0] && rows[0].data && typeof rows[0].data === 'object' ? rows[0].data : null;
 };
 const mergeStates = function (local, remote) {
-  const left = normalizeState(local);
-  const right = normalizeState(remote);
-  const items = new Map();
+  const left = normalizeState(local), right = normalizeState(remote);
+  const deletedItemIds = Array.from(new Set(left.deletedItemIds.concat(right.deletedItemIds)));
+  const deletedGroupNames = Array.from(new Set(left.deletedGroupNames.concat(right.deletedGroupNames)));
+  const deletedItems = new Set(deletedItemIds), deletedGroups = new Set(deletedGroupNames), items = new Map();
   right.items.forEach(function (item) { items.set(item.id, item); });
   left.items.forEach(function (item) {
-    const previous = items.get(item.id);
-    if (!previous || Number(item.updatedAt || 0) >= Number(previous.updatedAt || 0)) items.set(item.id, item);
+    const old = items.get(item.id);
+    if (!old || Number(item.updatedAt || 0) >= Number(old.updatedAt || 0)) items.set(item.id, item);
   });
-  const ordered = DEFAULT_ITEMS.map(function (item) { return items.get(item.id) || item; });
-  items.forEach(function (item, id) {
-    if (!DEFAULT_ITEMS.some(function (base) { return base.id === id; })) ordered.push(item);
-  });
+  const ordered = Array.from(items.values()).filter(function (item) { return !deletedItems.has(item.id) && !deletedGroups.has(item.group); });
+  const groups = Array.from(new Set(left.groups.concat(right.groups))).filter(function (name) { return !deletedGroups.has(name); });
+  ordered.forEach(function (item) { if (!groups.includes(item.group)) groups.push(item.group); });
   const calculatorLines = Number(left.updatedAt || 0) >= Number(right.updatedAt || 0) ? left.calculatorLines : right.calculatorLines;
   const history = new Map();
   right.priceHistory.forEach(function (entry) { history.set(entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'), entry); });
   left.priceHistory.forEach(function (entry) { history.set(entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'), entry); });
   return {
-    version: 1,
-    theme: Number(left.themeUpdatedAt || 0) >= Number(right.themeUpdatedAt || 0) ? left.theme : right.theme,
+    version: 1, theme: Number(left.themeUpdatedAt || 0) >= Number(right.themeUpdatedAt || 0) ? left.theme : right.theme,
     themeUpdatedAt: Math.max(Number(left.themeUpdatedAt) || 0, Number(right.themeUpdatedAt) || 0),
     updatedAt: Math.max(Number(left.updatedAt) || 0, Number(right.updatedAt) || 0),
-    items: ordered,
-    calculatorLines: calculatorLines,
+    groups: groups, deletedGroupNames: deletedGroupNames, deletedItemIds: deletedItemIds,
+    items: ordered, calculatorLines: calculatorLines,
     calculatorStore: Number(left.updatedAt || 0) >= Number(right.updatedAt || 0) ? left.calculatorStore : right.calculatorStore,
     priceHistory: Array.from(history.values()).sort(function (a, b) {
       return String(a.date || a.savedAt || '').localeCompare(String(b.date || b.savedAt || ''));
@@ -1217,8 +1270,11 @@ const sameState = function (a, b) {
     return JSON.stringify({
       theme: normalized.theme,
       themeUpdatedAt: normalized.themeUpdatedAt,
+      groups: normalized.groups,
+      deletedGroupNames: normalized.deletedGroupNames.slice().sort(),
+      deletedItemIds: normalized.deletedItemIds.slice().sort(),
       items: normalized.items.map(function (item) {
-        return [item.id, !!item.checked, !!item.priority, !!item.preferred, item.preferredStore || '', Number(item.updatedAt) || 0];
+        return [item.id, item.name, item.group, !!item.checked, !!item.priority, !!item.preferred, item.preferredStore || '', Number(item.updatedAt) || 0];
       }),
       calculatorStore: normalized.calculatorStore,
       calculatorLines: normalized.calculatorLines.map(function (line) { return [line.id, line.itemId, line.product, line.unitPrice, line.quantity, line.updatedAt]; }),

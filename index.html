@@ -48,7 +48,7 @@
         </div>
       </div>
 
-      <div class="list-meta"><span id="resultCount">Cargando...</span></div>
+      <div class="list-meta"><span id="resultCount">Cargando...</span><button class="icon-action add-group-action" id="addGroupButton" type="button" aria-label="Agregar grupo" title="Agregar grupo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button></div>
       <div id="listContainer" class="list-groups" aria-live="polite"></div>
 
       <footer class="list-footer" id="listFooter" hidden>
@@ -153,9 +153,9 @@
         </div>
         <div class="cart-lines" id="calcLinesBody"><p class="cart-empty">Sin productos.</p></div>
         <div class="calc-final-row" id="calcFinalRow">
-          <div class="final-line"><span>Total</span><strong id="totalAmount">₲ 0</strong></div>
-          <div class="final-line"><span>Descuento</span><strong id="discountAmount">₲ 0</strong></div>
-          <div class="final-line final-line-strong"><span>Con descuento</span><strong id="finalAmount">₲ 0</strong></div>
+          <div class="final-line final-line-total"><span>Total a pagar</span><strong id="totalAmount">₲ 0</strong></div>
+          <div class="final-line final-line-discount"><span>Reintegro estimado</span><strong id="discountAmount">₲ 0</strong></div>
+          <div class="final-line final-line-net"><span>Costo neto estimado</span><strong id="finalAmount">₲ 0</strong></div>
         </div>
         <div class="calc-cart-footer" id="calcCartFooter">
           <button class="primary-button" id="saveCalcPrices" type="button">Guardar precios</button>
@@ -170,12 +170,8 @@
           <span class="source-status" id="promoStatus">...</span>
         </div>
         <div class="calc-context-grid">
-          <label><span class="field-label">Supermercado</span>
-            <select class="field-input" id="storeSelect">
-              <option value="">Todos</option>
-            </select>
-          </label>
-          <label><span class="field-label">Beneficio</span>
+          <label><span class="field-label">Supermercado / comercio</span><input class="field-input" id="storeSelect" type="search" list="storeOptions" placeholder="Buscar Rubencito, Nissei..." autocomplete="off"><datalist id="storeOptions"></datalist></label>
+          <label><span class="field-label">Tarjeta / beneficio sugerido</span>
             <select class="field-input" id="levelSelect">
               <option value="all">Comparar todos</option>
             </select>
@@ -189,7 +185,7 @@
             <input class="field-input" type="number" id="manualDiscountInput" min="0" max="100" step="0.1" value="0" inputmode="decimal" aria-label="Descuento manual en porcentaje">
           </label>
         </div>
-        <p class="promo-description" id="promoDescription">Elegí un supermercado o usá el descuento manual.</p>
+        <p class="promo-description" id="promoDescription">Buscá en PromoScraper PY; los supermercados aparecen primero. El beneficio sugerido se puede cambiar.</p>
 
         <details class="discount-compare" id="discountCompare">
           <summary>
@@ -198,7 +194,7 @@
           </summary>
           <div class="table-wrap">
             <table class="calc-table discount-table" id="totalTable">
-              <thead><tr><th>Beneficio</th><th>Banco</th><th>%</th><th>Total</th><th>Ahorro</th><th>Tope</th><th></th></tr></thead>
+              <thead><tr><th>Beneficio</th><th>Banco</th><th>%</th><th>Costo neto</th><th>Reintegro</th><th>Tope</th><th></th></tr></thead>
               <tbody><tr><td colspan="7" class="table-empty">Cargando descuentos...</td></tr></tbody>
             </table>
           </div>
@@ -253,6 +249,7 @@
     </button>
   </nav>
 
+  <dialog class="crud-dialog" id="crudDialog" aria-labelledby="crudTitle"><form id="crudForm"><div class="crud-dialog-head"><h2 id="crudTitle">Editar</h2><button class="icon-action" id="crudClose" type="button" aria-label="Cerrar" title="Cerrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><label class="field-label" id="crudLabel" for="crudInput">Nombre</label><input class="field-input" id="crudInput" type="text" maxlength="100" autocomplete="off" required><p class="crud-hint" id="crudHint"></p><div class="crud-dialog-actions"><button class="secondary-button" id="crudCancel" type="button">Cancelar</button><button class="primary-button" type="submit">Guardar</button></div></form></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

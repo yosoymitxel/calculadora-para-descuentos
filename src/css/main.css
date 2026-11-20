@@ -700,3 +700,51 @@ input[type="number"] { -moz-appearance: textfield; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+
+/* CRUD compacto para grupos y productos */
+.list-meta { justify-content: space-between; gap: 8px; }
+.postit-group { position: relative; }
+.postit-head { padding-right: 132px; }
+.postit-controls { position: absolute; z-index: 3; top: 8px; right: 25px; display: flex; align-items: center; gap: 1px; }
+.icon-action { display: grid; width: 27px; height: 27px; flex: none; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--muted); }
+.icon-action svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.icon-action:active { background: var(--surface-2); color: var(--text); }
+.icon-action.danger-action { color: var(--danger); }
+.product-actions { align-items: center; gap: 0; }
+.product-actions .icon-action { width: 25px; height: 28px; }
+.product-actions .tag-button { width: 26px; height: 28px; }
+.product-actions .tag-button svg { width: 14px; height: 14px; }
+.empty-group { margin: 4px 0 2px; padding: 8px 2px; color: var(--muted); font-size: 12px; }
+.add-group-action { width: 30px; height: 30px; border: 1px solid var(--line); background: var(--surface); color: var(--accent); }
+.crud-dialog { width: min(420px, calc(100vw - 32px)); max-width: none; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--text); box-shadow: 0 24px 70px rgb(0 0 0 / .24); }
+.crud-dialog::backdrop { background: rgb(12 10 20 / .52); backdrop-filter: blur(3px); }
+.crud-dialog form { display: grid; gap: 10px; }
+.crud-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.crud-dialog-head h2 { margin: 0; font: 800 19px/1.15 var(--display); }
+.crud-hint { min-height: 16px; margin: 0; color: var(--muted); font-size: 12px; }
+.crud-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.crud-dialog-actions button { min-height: 38px; padding: 0 14px; }
+
+/* El total se paga en caja; el reintegro ocurre después. */
+.calc-final-row { grid-template-columns: 1.25fr .9fr 1.05fr; align-items: center; gap: 8px; }
+.final-line-total strong { color: var(--text); font-size: clamp(23px, 6vw, 29px); line-height: 1.05; }
+.final-line-discount strong { color: var(--accent); font-size: 13px; line-height: 1.15; }
+.final-line-net { align-items: flex-end; text-align: right; }
+.final-line-net strong { color: var(--text); font-size: 16px; line-height: 1.1; }
+.final-line-total span { color: var(--text); font-size: 12px; }
+.final-line-discount span, .final-line-net span { color: var(--muted); font-size: 10px; }
+@media (max-width: 380px) {
+  .postit-head { padding-right: 120px; }
+  .postit-controls { right: 24px; }
+  .postit-controls .icon-action { width: 25px; }
+  .product-actions .icon-action { width: 23px; }
+  .product-actions .tag-button { width: 24px; }
+  .calc-final-row { grid-template-columns: 1.1fr .8fr 1.1fr; gap: 5px; }
+  .final-line-total strong { font-size: 23px; }
+  .final-line-net strong { font-size: 14px; }
+}
+
+.product-actions .item-crud-action { width: 25px; padding: 0; }
+.product-actions .item-crud-action svg { display: block; }
+@media (min-width: 640px) { .product-actions .item-crud-action { width: 27px; } }
