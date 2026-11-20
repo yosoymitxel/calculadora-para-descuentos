@@ -43,3 +43,8 @@ Abrí `http://localhost:8080`.
 Los grupos y productos de cada post-it se pueden crear, renombrar y eliminar desde iconos compactos integrados en las tarjetas. Las eliminaciones se conservan al sincronizar la lista entre dispositivos.
 
 El buscador de comercio consulta el catálogo completo de PromoScraper PY y ordena primero las coincidencias de supermercados. Al encontrar un comercio, propone automáticamente la tarjeta/beneficio con mejor porcentaje; el selector contiguo permite elegir otro beneficio manualmente. El total a pagar en caja se destaca por encima del reintegro estimado, que puede acreditarse posteriormente.
+
+
+## Catálogo inicial por usuario
+
+El catálogo inicial vigente contiene 23 grupos y se aplica mediante la versión 2. Las listas guardadas de versiones anteriores se migran una sola vez cuando cada usuario abre la aplicación o sincroniza su cuenta. La migración sustituye los productos base anteriores, conserva grupos y productos personalizados, el historial y la calculadora. La versión queda almacenada en la lista local y en el perfil de Supabase: los cambios futuros al catálogo predeterminado no sobrescriben listas que ya fueron migradas. No incrementar DEFAULT_CATALOG_VERSION sin una nueva solicitud explícita de actualización global.

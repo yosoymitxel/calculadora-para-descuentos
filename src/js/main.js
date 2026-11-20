@@ -3,7 +3,39 @@
 /* ---------------------------------------------------------
    Datos iniciales de la lista
    --------------------------------------------------------- */
+/*
+ * Catálogo inicial v2. Se aplica una sola vez a los estados anteriores.
+ * Una vez que una lista guarda defaultCatalogVersion=2, los cambios futuros a
+ * DEFAULT_GROUPS no se propagan a esa lista. No incrementar esta versión sin
+ * una solicitud explícita de otra migración global.
+ */
+const DEFAULT_CATALOG_VERSION = 2;
 const DEFAULT_GROUPS = [
+  { name: 'CARNES', items: ['Pechuga', 'Patitas de pollo', 'Caderitas', 'Muslo y ala', 'Carne chica', 'Cerdo', 'Osobuco', 'Falda'] },
+  { name: 'EMBUTIDOS', items: ['Pancho', 'Chorizo napolitano', 'Butifarra', 'Parrillero'] },
+  { name: 'CONGELADOS', items: ['Nuggets', 'Milanesas', 'Queso granulado', 'Jamón', 'Requesón', 'Cheddar', 'Papitas', 'Vori vori', 'Ñoquis', 'Ravioles', 'Disco de empanada', 'Paté'] },
+  { name: 'FIDEOS/ARROZ', items: ['Fideo moñito', 'Fideo dadito', 'Caracolito', 'Tallarín listón', 'Nido', 'Arroz', 'Ramen', 'Fideo de arroz'] },
+  { name: 'PANIFICADOS', items: ['Pan', 'Pan sándwich', 'Pan hamburguesa', 'Pan pancho', 'Pan de ajo', 'Pan árabe', 'Rapidita', 'Coquito', 'Chipita'] },
+  { name: 'BEBIDAS', items: ['Leche', 'Aquarius', 'Ades manzana', 'Vino', 'Cachaza'] },
+  { name: 'CONFITES', items: ['Pepas', 'Rumba', 'Nikito frutilla/DDL', 'Anillos de coco', 'Tippy', 'Terrabusi', 'Lincoln', 'Oreos', 'Alfajor (caja)', 'Turrón (caja)', 'Cereal (choco, maíz)', 'Nestoon', 'Maní desayuno chico'] },
+  { name: 'SNACKS', items: ['Papitas', 'Presunto', 'Saladix', 'Chuche sano', 'Maní picante'] },
+  { name: 'DESAYUNO', items: ['Azúcar', 'Café normal', 'Chocolatada', 'Edulcorante', 'Café de soja', 'Café descafeinado', 'Cocido', 'Té tilo', 'Té anís', 'Té jengibre', 'Té Hornimans', 'Té rojo'] },
+  { name: 'DULCES', items: ['Dulce de guayaba', 'Mermeladas', 'Dulce de leche', 'Miel', 'Leche condensada', 'Caramelitos de miel', 'Yummy'] },
+  { name: 'COCINA', items: ['Aceite', 'Conserva', 'Manteca', 'Sal', 'Sal condimentada', 'Salsa de pizza', 'Aceitunas', 'Vinagre de manzana', 'Atún', 'Sardina'] },
+  { name: 'CONDIMENTOS', items: ['Limón y orégano', 'Ajo y cebolla', 'Nuez moscada', 'Laurel', 'Romero', 'Provenzal', 'Orégano', 'Ají', 'Condimento para pollo', 'Albahaca', 'Comino', 'Pimienta'] },
+  { name: 'TERERÉ/MATÉ', items: ['Yerba común', 'Megamente', 'Mix manzanilla', 'Eneldo', 'Siempre vive', 'Flor de Jamaica', 'Cola de caballo'] },
+  { name: 'SECOS', items: ['Harina de maíz', 'Almidón de mandioca', 'Harina L/C', 'Levadura seca', 'Royal', 'Canela', 'Yerba Indega', 'Pororó', 'Poroto', 'Mezcla para bizcocho/brownie (Mazei)'] },
+  { name: 'SALSAS', items: ['Mayonesa', 'Ketchup', 'Ahumada/Asado', 'Ajo', 'Savora'] },
+  { name: 'VERDURAS', items: ['Tomate', 'Repollo', 'Papa', 'Cebolla', 'Locote', 'Ajo', 'Zanahoria', 'Batata', 'Jengibre', 'Remolacha'] },
+  { name: 'FRUTAS', items: ['Limón', 'Uva', 'Banana', 'Manzana', 'Melón', 'Sandía', 'Piña', 'Naranja', 'Mandarina', 'Frutilla'] },
+  { name: 'LIMPIEZA', items: ['Bolsa de basura 150/100', 'Esponjas', 'Detergente', 'Alambrillo', 'Guantes de látex', 'Trapo de piso', 'Papel higiénico'] },
+  { name: 'LAVADERO', items: ['Confort concentrado', 'Jabón p/ ropa', 'Lavandina', 'Desodorante de ambiente', 'Mata todo', 'Stick mosquito', 'Mata todo para fuera'] },
+  { name: 'HIGIENE', items: ['Desodorantes', 'Toallita húmeda', 'Jabón antibac', 'Mode', 'Desodorante', 'Jabón Dove', 'Quitaesmalte'] },
+  { name: 'ELEMENTOS DE COCINA', items: ['Servilleta', 'Moldes de papel air fryer', 'Papel aluminio', 'Papel manteca', 'Bolsas para congelar', 'Potes para congelar'] },
+  { name: 'UTILES', items: ['Estante para ropa sucia', 'Porta bizcochos para exhibidor', 'Tarteletas 4/6', 'Batidores de leche', 'Balanza', 'Espejo mediano'] },
+  { name: 'HERRAMIENTAS', items: ['Escuadras', 'Bisagras', 'Pasador de cerradura', 'Focos', 'Mata moscas raqueta', 'Vela citronela/aromas'] }
+];
+const PREVIOUS_DEFAULT_GROUPS_V1 = [
   {
     name: 'Carnes, congelados y proteínas',
     items: ['Pechuga', 'Patitas de pollo', 'Cederiras', 'Muslo y ala', 'Carne chica', 'Cerdo', 'Osobuco', 'Falda', 'Pancho', 'Chorizo', 'Nuggets', 'Milanesas', 'Paté', 'Queso granulado', 'Jamón', 'Requesón', 'Papitas', 'Vori vori', 'Ñoquis', 'Ravioles', 'Disco de empanada', 'Atún', 'Sardina']
@@ -113,7 +145,7 @@ const makeDefaultItems = function () {
 };
 const DEFAULT_ITEMS = makeDefaultItems();
 const defaultState = function () {
-  return { version: 1, theme: 'light', themeUpdatedAt: 0, updatedAt: 0,
+  return { version: 1, defaultCatalogVersion: DEFAULT_CATALOG_VERSION, theme: 'light', themeUpdatedAt: 0, updatedAt: 0,
     groups: DEFAULT_GROUPS.map(function (group) { return group.name; }),
     deletedGroupNames: [], deletedItemIds: [],
     items: DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); }),
@@ -134,7 +166,8 @@ const normalizeState = function (raw) {
   const groups = Array.from(new Set(sourceGroups.map(function (name) { return String(name || '').trim(); }).filter(Boolean))).filter(function (name) { return !deletedGroups.has(name); });
   items.forEach(function (item) { if (!groups.includes(item.group) && !deletedGroups.has(item.group)) groups.push(item.group); });
   return {
-    version: 1, theme: source.theme === 'dark' ? 'dark' : 'light',
+    version: 1, defaultCatalogVersion: Number(source.defaultCatalogVersion) || 0,
+    theme: source.theme === 'dark' ? 'dark' : 'light',
     themeUpdatedAt: Number(source.themeUpdatedAt) || 0, updatedAt: Number(source.updatedAt) || 0,
     groups: groups, deletedGroupNames: deletedGroupNames, deletedItemIds: deletedItemIds, items: items,
     calculatorLines: Array.isArray(source.calculatorLines) ? source.calculatorLines.filter(function (line) { return line && typeof line === 'object' && typeof line.product === 'string'; }).map(function (line, index) {
@@ -143,6 +176,43 @@ const normalizeState = function (raw) {
     calculatorStore: String(source.calculatorStore || ''),
     priceHistory: Array.isArray(source.priceHistory) ? source.priceHistory.filter(function (entry) { return entry && typeof entry === 'object' && typeof entry.itemId === 'string'; }) : []
   };
+};
+
+const applyDefaultCatalogMigration = function (raw) {
+  const current = normalizeState(raw);
+  if (current.defaultCatalogVersion >= DEFAULT_CATALOG_VERSION) return current;
+  const oldGroupNames = new Set(PREVIOUS_DEFAULT_GROUPS_V1.map(function (group) { return group.name; }));
+  const nextGroupNames = new Set(DEFAULT_GROUPS.map(function (group) { return group.name; }));
+  const oldItemIds = new Set(PREVIOUS_DEFAULT_GROUPS_V1.flatMap(function (group) {
+    return group.items.map(function (name) { return idFor(group.name, name); });
+  }));
+  const nextItems = DEFAULT_ITEMS.map(function (item) { return Object.assign({}, item); });
+  const nextItemIds = new Set(nextItems.map(function (item) { return item.id; }));
+  const customItems = current.items.filter(function (item) { return !oldItemIds.has(item.id); });
+  const retainedLegacyGroups = current.groups.filter(function (name) {
+    return oldGroupNames.has(name) && customItems.some(function (item) { return item.group === name; });
+  });
+  const customGroups = current.groups.filter(function (name) {
+    return !oldGroupNames.has(name) && !nextGroupNames.has(name);
+  });
+  const deletedItemIds = current.deletedItemIds.filter(function (id) {
+    return !oldItemIds.has(id) && !nextItemIds.has(id);
+  });
+  const deletedGroupNames = current.deletedGroupNames.filter(function (name) {
+    return !oldGroupNames.has(name) && !nextGroupNames.has(name);
+  });
+  const calculatorLines = current.calculatorLines.map(function (line) {
+    return oldItemIds.has(line.itemId) ? Object.assign({}, line, { itemId: '' }) : line;
+  });
+  return normalizeState(Object.assign({}, current, {
+    defaultCatalogVersion: DEFAULT_CATALOG_VERSION,
+    updatedAt: Math.max(Date.now(), (Number(current.updatedAt) || 0) + 1),
+    groups: Array.from(new Set(customGroups.concat(retainedLegacyGroups, DEFAULT_GROUPS.map(function (group) { return group.name; })))),
+    deletedGroupNames: deletedGroupNames,
+    deletedItemIds: deletedItemIds,
+    items: customItems.concat(nextItems),
+    calculatorLines: calculatorLines
+  }));
 };
 
 let session = storage.get('panel.sess', null);
@@ -1214,7 +1284,7 @@ $('importFile').addEventListener('change', async function () {
       confirmText: 'Restaurar respaldo'
     });
     if (!confirmed) return;
-    state = normalizeState(imported);
+    state = applyDefaultCatalogMigration(normalizeState(imported));
     const now = Date.now();
     state.items.forEach(function (item) { item.updatedAt = now; });
     state.updatedAt = now;
@@ -1265,7 +1335,7 @@ const switchUser = function (userId) {
   activeUserId = userId || 'guest';
   const saved = activeUserId === 'guest' ? storage.get(GUEST_KEY, null) : storage.get(STATE_KEY + '.' + activeUserId, null);
   localBelongsToAccount = activeUserId === 'guest' || !!saved;
-  state = normalizeState(saved || storage.get(GUEST_KEY, null) || defaultState());
+  state = applyDefaultCatalogMigration(normalizeState(saved || storage.get(GUEST_KEY, null) || defaultState()));
   applyTheme();
   persistLocal();
   renderList();
@@ -1295,7 +1365,7 @@ const readCloudProfile = async function (token) {
   return rows && rows[0] && rows[0].data && typeof rows[0].data === 'object' ? rows[0].data : null;
 };
 const mergeStates = function (local, remote) {
-  const left = normalizeState(local), right = normalizeState(remote);
+  const left = applyDefaultCatalogMigration(local), right = applyDefaultCatalogMigration(remote);
   const deletedItemIds = Array.from(new Set(left.deletedItemIds.concat(right.deletedItemIds)));
   const deletedGroupNames = Array.from(new Set(left.deletedGroupNames.concat(right.deletedGroupNames)));
   const deletedItems = new Set(deletedItemIds), deletedGroups = new Set(deletedGroupNames), items = new Map();
@@ -1312,7 +1382,8 @@ const mergeStates = function (local, remote) {
   right.priceHistory.forEach(function (entry) { history.set(entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'), entry); });
   left.priceHistory.forEach(function (entry) { history.set(entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'), entry); });
   return {
-    version: 1, theme: Number(left.themeUpdatedAt || 0) >= Number(right.themeUpdatedAt || 0) ? left.theme : right.theme,
+    version: 1, defaultCatalogVersion: Math.max(left.defaultCatalogVersion || 0, right.defaultCatalogVersion || 0),
+    theme: Number(left.themeUpdatedAt || 0) >= Number(right.themeUpdatedAt || 0) ? left.theme : right.theme,
     themeUpdatedAt: Math.max(Number(left.themeUpdatedAt) || 0, Number(right.themeUpdatedAt) || 0),
     updatedAt: Math.max(Number(left.updatedAt) || 0, Number(right.updatedAt) || 0),
     groups: groups, deletedGroupNames: deletedGroupNames, deletedItemIds: deletedItemIds,
@@ -1327,6 +1398,7 @@ const sameState = function (a, b) {
   const pick = function (value) {
     const normalized = normalizeState(value);
     return JSON.stringify({
+      defaultCatalogVersion: normalized.defaultCatalogVersion,
       theme: normalized.theme,
       themeUpdatedAt: normalized.themeUpdatedAt,
       groups: normalized.groups,
@@ -1366,10 +1438,11 @@ const syncWithCloud = async function (quiet) {
     const profileData = await readCloudProfile(token);
     const remote = profileData && profileData.shoppingList;
     if (remote && Array.isArray(remote.items)) {
+      const migratedRemote = applyDefaultCatalogMigration(remote);
       if (localBelongsToAccount) {
-        state = mergeStates(state, remote);
+        state = mergeStates(state, migratedRemote);
       } else {
-        state = normalizeState(remote);
+        state = migratedRemote;
       }
       localBelongsToAccount = true;
       persistLocal();
@@ -1512,6 +1585,8 @@ window.setInterval(function () {
 /* ---------------------------------------------------------
    Inicio
    --------------------------------------------------------- */
+state = applyDefaultCatalogMigration(state);
+persistLocal();
 applyTheme();
 renderList();
 $('discountCompare').open = false;
