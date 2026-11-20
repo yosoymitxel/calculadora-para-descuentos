@@ -1,122 +1,211 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora con Tabla</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link rel="stylesheet" href="src/css/main.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0c0d10">
+  <meta name="description" content="Lista de compras con promociones bancarias de supermercados y seguimiento de precios en Paraguay.">
+  <title>Compra · Lista y descuentos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/css/main.css">
+  <script src="src/js/main.js" defer></script>
 </head>
 <body>
-<div class="container-fluid d-flex flex-column py-3">
-    <div class="d-flex justify-content-between align-items-start overflow-auto" style="max-width: 100vw;">
-        <div class="me-3 w-50" >
-            <label for="levelSelect" class="form-label">Seleccionar Nivel:</label>
-            <select id="levelSelect" class="form-select">
-
-            </select>
-            <div class="mt-2">
-                <label for="topeUsadoInput" class="form-label">Tope usado hasta ahora:</label>
-                <input type="number" id="topeUsadoInput" class="form-control" value="0" min="0">
-            </div>
-        </div>
-        <div class="table-responsive overflow-visible" style="max-width: 50%">
-            <table class="table table-bordered table-striped " style="width: 92vw;" id="totalTable">
-                <thead>
-                <tr>
-                    <th>Nivel</th>
-                    <th>%</th>
-                    <th>Total</th>
-                    <th>Descuento</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                </tr>
-                </tbody>
-            </table>
-        </div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Compra, inicio">
+      <span class="brand-mark" aria-hidden="true">C</span>
+      <span>compra<span class="brand-dot">.</span></span>
+    </a>
+    <div class="top-actions">
+      <span class="sync-pill" id="syncStatus" role="status">Este dispositivo</span>
+      <button class="icon-button" id="headerProfile" type="button" data-view="profile" aria-label="Abrir perfil">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path></svg>
+      </button>
     </div>
-    <!-- Tabla de resultados -->
-    <div class="table-responsive overflow-y-auto" >
-        <div class="overflow-y-auto">
-            <table class="table table-bordered table-striped" id="resultTable">
-                <thead>
-                <tr>
-                    <th>Precio Unitario</th>
-                    <th>Cantidad</th>
-                    <th>Total Producto</th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-        <button class="btn btn-primary" id="exportCsv">Exportar a CSV</button>
-    </div>
+  </header>
 
-    <!-- Total y botón de alternancia -->
-    <div class="d-flex justify-content-between align-items-center my-3">
-        <div>
-            <strong>Total: </strong><span id="totalAmount">0</span>
+  <main class="app-shell">
+    <section class="view active" id="listView" aria-labelledby="listTitle">
+      <div class="intro">
+        <div class="intro-copy">
+          <span class="eyebrow">LISTA INTELIGENTE · PARAGUAY</span>
+          <h1 id="listTitle">Que no se quede<br><em>nada.</em></h1>
+          <p>Marcá lo que falta, priorizá lo importante y compará el precio real con los descuentos de supermercados.</p>
         </div>
-        <button id="toggleCalculator" class="btn btn-secondary"><i class="fa fa-balance-scale"></i></button>
-    </div>
+        <div class="progress-card">
+          <span class="progress-label">Tu compra</span>
+          <strong id="progressNumber">0/0</strong>
+          <div class="progress-track"><span id="progressBar"></span></div>
+          <small id="progressText">Todo pendiente</small>
+        </div>
+      </div>
 
-    <!-- Calculadora con teclado -->
-    <div class="mt-auto">
-        <div class="input-group mb-3">
-            <textarea id="calculatorInput" class="form-control" rows="3" placeholder="Ingrese la ecuación..."></textarea>
+      <div class="list-toolbar">
+        <label class="search-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg>
+          <input id="searchInput" type="search" placeholder="Buscar en la lista..." autocomplete="off" aria-label="Buscar productos">
+          <kbd>/</kbd>
+        </label>
+        <div class="filter-row" id="filterButtons" aria-label="Filtrar productos">
+          <button class="filter-chip active" type="button" data-filter="all" aria-pressed="true">Todos</button>
+          <button class="filter-chip" type="button" data-filter="pending" aria-pressed="false">Pendientes</button>
+          <button class="filter-chip" type="button" data-filter="priority" aria-pressed="false">Prioridad</button>
+          <button class="filter-chip" type="button" data-filter="done" aria-pressed="false">Comprados</button>
         </div>
-        <!-- Teclado de la calculadora -->
-        <div class="row px-2 text-center">
-            <button class="col btn btn-secondary calc-key" data-key="1">1</button>
-            <button class="col btn btn-secondary calc-key" data-key="2">2</button>
-            <button class="col btn btn-secondary calc-key" data-key="3">3</button>
-            <button class="col btn btn-secondary calc-key" data-key="+">+</button>
-        </div>
-        <div class="row px-2 text-center">
-            <button class="col btn btn-secondary calc-key" data-key="4">4</button>
-            <button class="col btn btn-secondary calc-key" data-key="5">5</button>
-            <button class="col btn btn-secondary calc-key" data-key="6">6</button>
-            <button class="col btn btn-secondary calc-key" data-key="*">*</button>
-        </div>
-        <div class="row px-2 text-center">
-            <button class="col btn btn-secondary calc-key" data-key="7">7</button>
-            <button class="col btn btn-secondary calc-key" data-key="8">8</button>
-            <button class="col btn btn-secondary calc-key" data-key="9">9</button>
-            <button class="col btn btn-secondary calc-key" data-key="0">0</button>
-        </div>
-        <div class="row px-2 text-center">
-            <button class="col btn btn-secondary calc-key" data-key="000">000</button>
-            <button class="col btn btn-warning calc-key bg-warning font-weight-bold" data-key="C">Borrar</button>
-            <button class="col btn btn-danger calc-key bg-danger font-weight-bold" data-key="CE">Borrar Todo</button>
-        </div>
-    </div>
+      </div>
 
-    <!-- Sección de la calculadora de regla de tres (inicialmente oculta) -->
-    <div id="reglaTresCalculator" class="mb-auto" style="display: none;">
-        <h4>Calculadora de Regla de Tres</h4>
-        <div class="row g-3">
-            <div class="col-6">
-                <input type="number" id="reglatres_a" class="form-control" placeholder="A">
-            </div>
-            <div class="col-6">
-                <input type="number" id="reglatres_b" class="form-control" placeholder="B">
-            </div>
-            <div class="col-6">
-                <input type="number" id="reglatres_c" class="form-control" placeholder="C">
-            </div>
-            <div class="col-6">
-                <input type="text" id="reglatres_result" class="form-control" placeholder="Resultado" readonly>
-            </div>
-        </div>
-    </div>
-</div>
+      <div class="list-summary">
+        <span id="resultCount">Cargando lista...</span>
+        <span class="summary-hint" id="summaryHint">Tocá un producto para cargar su precio</span>
+      </div>
+      <div id="listContainer" class="list-groups" aria-live="polite"></div>
 
-<script src="src/js/main.js"></script>
+      <footer class="list-footer">
+        <span>Los precios guardados quedan como referencia para próximas compras.</span>
+        <button class="text-button" id="clearDone" type="button">Desmarcar comprados</button>
+      </footer>
+    </section>
+
+    <section class="view profile-view" id="profileView" aria-labelledby="profileTitle" hidden>
+      <div class="section-heading">
+        <span class="eyebrow">TU ESPACIO</span>
+        <h1 id="profileTitle">Perfil y datos</h1>
+        <p>Tu lista pertenece a tu cuenta. Iniciá sesión para mantenerla sincronizada entre dispositivos.</p>
+      </div>
+
+      <section class="panel-card account-card" aria-labelledby="accountTitle">
+        <div class="panel-card-heading">
+          <div>
+            <span class="eyebrow">CUENTA</span>
+            <h2 id="accountTitle">Sincronización personal</h2>
+          </div>
+          <span class="account-state" id="accountState">Local</span>
+        </div>
+        <div id="loginPanel">
+          <form id="loginForm" class="account-form">
+            <label class="field-label" for="loginEmail">Correo electrónico</label>
+            <input class="field-input" id="loginEmail" type="email" autocomplete="email" required placeholder="tu@correo.com">
+            <label class="field-label" for="loginPassword">Contraseña</label>
+            <input class="field-input" id="loginPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="Al menos 6 caracteres">
+            <div class="account-actions">
+              <button class="primary-button" type="submit">Iniciar sesión</button>
+              <button class="secondary-button" id="signupButton" type="button">Crear cuenta</button>
+            </div>
+            <button class="text-button forgot-button" id="forgotButton" type="button">Olvidé mi contraseña</button>
+          </form>
+        </div>
+        <div id="loggedPanel" hidden>
+          <p class="logged-email" id="loggedEmail"></p>
+          <p class="muted-copy">Los cambios se guardan en tu perfil y se comparten con los demás dispositivos donde inicies sesión.</p>
+          <div class="account-actions">
+            <button class="secondary-button" id="syncButton" type="button">Sincronizar ahora</button>
+            <button class="text-button danger-text" id="logoutButton" type="button">Cerrar sesión</button>
+          </div>
+        </div>
+        <p class="form-message" id="accountMessage" role="status" aria-live="polite">Sin sesión, la lista queda guardada en este navegador.</p>
+      </section>
+
+      <section class="panel-card" aria-labelledby="appearanceTitle">
+        <div class="panel-card-heading">
+          <div>
+            <span class="eyebrow">APARIENCIA</span>
+            <h2 id="appearanceTitle">Tema visual</h2>
+          </div>
+        </div>
+        <div class="theme-options" role="group" aria-label="Elegir tema">
+          <button class="theme-option active" type="button" data-theme-choice="dark" aria-pressed="true">
+            <span class="theme-preview dark-preview"></span><span>Oscuro</span>
+          </button>
+          <button class="theme-option" type="button" data-theme-choice="light" aria-pressed="false">
+            <span class="theme-preview light-preview"></span><span>Claro</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel-card" aria-labelledby="backupTitle">
+        <div class="panel-card-heading">
+          <div>
+            <span class="eyebrow">HISTORIAL Y RESPALDO</span>
+            <h2 id="backupTitle">Tus precios guardados</h2>
+          </div>
+          <span class="count-pill" id="historyCount">0 registros</span>
+        </div>
+        <p class="muted-copy">Cada registro conserva producto, precio, cantidad, supermercado, banco, promoción aplicada y fecha. Exportá el historial y volvé a importarlo cuando lo necesites.</p>
+        <div class="backup-actions">
+          <button class="primary-button" id="exportJson" type="button">Exportar respaldo</button>
+          <button class="secondary-button" id="exportCsv" type="button">Exportar precios CSV</button>
+          <button class="secondary-button" id="importButton" type="button">Importar respaldo</button>
+          <input id="importFile" type="file" accept="application/json,.json" hidden>
+        </div>
+        <p class="form-message" id="backupMessage" role="status"></p>
+      </section>
+
+      <p class="profile-footnote">Las promociones se consultan desde PromoScraper PY. El descuento final puede depender de topes, tarjetas y condiciones de cada banco.</p>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Navegación principal">
+    <button class="nav-item active" type="button" data-view="list" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="m8 12 2.5 2.5L16 9"></path></svg>
+      <span>Lista</span>
+    </button>
+    <button class="nav-item" type="button" data-view="profile">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path></svg>
+      <span>Perfil</span>
+    </button>
+  </nav>
+
+  <dialog class="price-dialog" id="priceDialog" aria-labelledby="priceTitle">
+    <div class="dialog-top">
+      <div>
+        <span class="eyebrow">CALCULADORA DE PRODUCTO</span>
+        <h2 id="priceTitle">Registrar precio</h2>
+      </div>
+      <button class="icon-button close-dialog" id="closePriceDialog" type="button" aria-label="Cerrar calculadora">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+      </button>
+    </div>
+    <div class="dialog-body">
+      <label class="field-label" for="priceProduct">Producto de la lista</label>
+      <input class="field-input readonly-input" id="priceProduct" readonly>
+      <div class="field-grid">
+        <label><span class="field-label">Precio unitario (₲)</span><input class="field-input" id="priceUnit" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej. 25000"></label>
+        <label><span class="field-label">Cantidad</span><input class="field-input" id="priceQuantity" type="number" min="0.01" step="any" value="1" inputmode="decimal"></label>
+      </div>
+      <label class="field-label" for="priceStore">Supermercado</label>
+      <input class="field-input" id="priceStore" list="supermarketOptions" placeholder="Ej. Stock, Superseis, Casa Rica...">
+      <datalist id="supermarketOptions"></datalist>
+
+      <div class="promo-heading">
+        <label class="field-label" for="pricePromo">Promoción bancaria disponible</label>
+        <span class="source-status" id="promoStatus">Consultando...</span>
+      </div>
+      <select class="field-input" id="pricePromo">
+        <option value="">Sin promoción · ingresar descuento manual</option>
+      </select>
+      <p class="promo-description" id="promoDescription">Elegí una promoción para aplicar su porcentaje al precio.</p>
+
+      <div class="field-grid">
+        <label><span class="field-label">Descuento (%)</span><input class="field-input" id="priceDiscount" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="0"></label>
+        <label><span class="field-label">Tope de descuento (₲)</span><input class="field-input" id="priceCap" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin tope"></label>
+      </div>
+      <label class="field-label" for="priceDate">Fecha de compra</label>
+      <input class="field-input" id="priceDate" type="date">
+
+      <div class="item-history" id="priceHistoryItem"></div>
+      <div class="calculation-preview">
+        <div><span>Subtotal</span><strong id="previewSubtotal">₲ 0</strong></div>
+        <div><span>Descuento estimado</span><strong id="previewDiscount">− ₲ 0</strong></div>
+        <div class="preview-total"><span>Total con descuento</span><strong id="previewTotal">₲ 0</strong></div>
+      </div>
+      <p class="calculation-note">Estimación según el porcentaje seleccionado. Los topes, días, tarjetas habilitadas y condiciones deben verificarse en las bases de la promoción.</p>
+      <button class="primary-button save-price-button" id="savePrice" type="button">Guardar precio en el historial</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
-

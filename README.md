@@ -1,25 +1,31 @@
-# Calculadora para Descuentos
+# Compra · Lista y descuentos
 
-https://yosoymitxel.github.io/calculadora-para-descuentos/
+Aplicación web estática para organizar una lista de supermercado, registrar precios reales y compararlos con las promociones bancarias publicadas por PromoScraper PY.
 
-Este proyecto es una aplicación web de calculadora para calcular los precios con descuentos aplicados en diferentes niveles. La aplicación permite a los usuarios introducir productos con precios y cantidades, y muestra el total, junto con el desglose de los descuentos aplicados por nivel.
+## Funciones
 
-## Características
+- Lista agrupada por categorías, con tarjetas checkeables.
+- Búsqueda y filtros por pendientes, comprados y prioridad.
+- Etiquetas por producto: **Prioridad** y **Super preferido**.
+- Calculadora asociada a cada producto: precio, cantidad, supermercado, promoción, descuento y tope.
+- Consulta de promociones de supermercados desde:
+  `https://yosoymitxel.github.io/promociones-tarjetas-bancos-paraguay-py/promos.json`
+- Historial exportable a CSV y respaldo JSON importable.
+- Tema claro y oscuro.
+- Inicio de sesión y sincronización por usuario mediante el proyecto Supabase usado por el panel Web-scrapping. Sin sesión, se conserva una lista local por navegador.
 
-- **Interfaz limpia y moderna** utilizando Bootstrap.
-- Permite elegir el **nivel de descuento** (Nivel 1 a Nivel 5).
-- **Calculadora** con teclado interactivo para facilitar el ingreso de ecuaciones matemáticas.
-- **Tabla de resultados** que muestra el precio unitario, la cantidad y el total del producto.
-- **Exportar los resultados a un archivo CSV**.
-- **Cálculo en tiempo real** del total mientras se ingresan los datos.
+## Desarrollo local
 
-## Requisitos
+No requiere build ni dependencias de Node. Se puede abrir `index.html` o servir la carpeta con:
 
-- Un navegador moderno (Chrome, Firefox, Edge, Safari, etc.).
-- Conexión a Internet para cargar las librerías de Bootstrap y jQuery desde los CDNs.
+```bash
+python3 -m http.server 8080
+```
 
-## Instalación
+Abrí `http://localhost:8080`.
 
-1. Clona el repositorio:
-   ```bash
-   git clone https://github.com/yosoymitxel/calculadora-para-descuentos.git
+## Datos y cuentas
+
+La lista y el historial se guardan en `localStorage` y, al iniciar sesión, se sincronizan en `panel_profiles.data.shoppingList` con las políticas RLS de Supabase. La aplicación no necesita claves privadas: usa la clave pública de cliente ya utilizada por el panel.
+
+Las promociones son datos externos de solo lectura. Si no se puede acceder al JSON, se utiliza la última copia local disponible; el registro manual de precios sigue funcionando.
