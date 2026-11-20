@@ -214,17 +214,27 @@
               <button class="calc-key" type="button" data-key="1">1</button><button class="calc-key" type="button" data-key="2">2</button><button class="calc-key" type="button" data-key="3">3</button><button class="calc-key key-op" type="button" data-key="+">+</button>
               <button class="calc-key" type="button" data-key="4">4</button><button class="calc-key" type="button" data-key="5">5</button><button class="calc-key" type="button" data-key="6">6</button><button class="calc-key key-op" type="button" data-key="*">×</button>
               <button class="calc-key" type="button" data-key="7">7</button><button class="calc-key" type="button" data-key="8">8</button><button class="calc-key" type="button" data-key="9">9</button><button class="calc-key" type="button" data-key="0">0</button>
-              <button class="calc-key key-op" type="button" data-key="000">000</button><button class="calc-key key-warn" type="button" data-key="C">Borrar</button><button class="calc-key key-danger" type="button" data-key="CE">Todo</button><button class="calc-key key-op" type="button" data-key=".">.</button>
+              <button class="calc-key key-op" type="button" data-key="000">000</button><button class="calc-key key-warn" type="button" data-key="C">Borrar</button><button class="calc-key key-danger" type="button" data-key="CE">Todo</button><button class="calc-key key-op" type="button" data-key="-">−</button>
             </div>
           </div>
           <div id="reglaTresCalculator" class="rule-three" hidden>
-            <h3>Regla de tres</h3>
-            <div class="field-grid">
-              <label><span class="field-label">A</span><input class="field-input" type="number" id="reglatres_a" placeholder="A"></label>
-              <label><span class="field-label">B</span><input class="field-input" type="number" id="reglatres_b" placeholder="B"></label>
-              <label><span class="field-label">C</span><input class="field-input" type="number" id="reglatres_c" placeholder="C"></label>
-              <label><span class="field-label">Resultado</span><input class="field-input" type="text" id="reglatres_result" placeholder="Resultado" readonly></label>
+            <h3>¿Cuál conviene más?</h3>
+            <p class="compare-hint">Compará dos presentaciones por su precio según la cantidad. Se calcula el costo por 100 g, 100 ml o unidad.</p>
+            <div class="compare-products">
+              <fieldset class="compare-product">
+                <legend>Producto A</legend>
+                <label><span class="field-label">Nombre</span><input class="field-input" id="compareAName" type="text" placeholder="Galletitas 300 g"></label>
+                <label><span class="field-label">Precio (G.)</span><input class="field-input" id="compareAPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="5000"></label>
+                <div class="compare-quantity-row"><label><span class="field-label">Cantidad</span><input class="field-input" id="compareAQuantity" type="number" min="0" step="any" placeholder="300"></label><label><span class="field-label">Unidad</span><select class="field-input" id="compareAUnit"><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="unidad">unidad</option></select></label></div>
+              </fieldset>
+              <fieldset class="compare-product">
+                <legend>Producto B</legend>
+                <label><span class="field-label">Nombre</span><input class="field-input" id="compareBName" type="text" placeholder="Galletitas 220 g"></label>
+                <label><span class="field-label">Precio (G.)</span><input class="field-input" id="compareBPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="4000"></label>
+                <div class="compare-quantity-row"><label><span class="field-label">Cantidad</span><input class="field-input" id="compareBQuantity" type="number" min="0" step="any" placeholder="220"></label><label><span class="field-label">Unidad</span><select class="field-input" id="compareBUnit"><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="unidad">unidad</option></select></label></div>
+              </fieldset>
             </div>
+            <div id="ruleCompareResult" class="compare-result" aria-live="polite"><p class="compare-hint">Ingresá precio y cantidad de ambos productos para compararlos.</p></div>
           </div>
           <div class="keypad-actions">
             <button class="secondary-button" id="toggleCalculator" type="button">Regla de tres</button>

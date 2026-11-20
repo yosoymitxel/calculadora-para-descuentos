@@ -171,7 +171,7 @@ const normalizeState = function (raw) {
     themeUpdatedAt: Number(source.themeUpdatedAt) || 0, updatedAt: Number(source.updatedAt) || 0,
     groups: groups, deletedGroupNames: deletedGroupNames, deletedItemIds: deletedItemIds, items: items,
     calculatorLines: Array.isArray(source.calculatorLines) ? source.calculatorLines.filter(function (line) { return line && typeof line === 'object' && typeof line.product === 'string'; }).map(function (line, index) {
-      return Object.assign({}, line, { id: String(line.id || ('calc-' + index + '-' + slug(line.product))), itemId: String(line.itemId || ''), unitPrice: Number(line.unitPrice) || 0, quantity: Number(line.quantity) || 1, updatedAt: Number(line.updatedAt) || 0 });
+      return Object.assign({}, line, { id: String(line.id || ('calc-' + index + '-' + slug(line.product))), itemId: String(line.itemId || ''), unitPrice: Number(line.unitPrice) || 0, quantity: Number(line.quantity) || 1, sign: Number(line.sign) === -1 ? -1 : 1, updatedAt: Number(line.updatedAt) || 0 });
     }) : [],
     calculatorStore: String(source.calculatorStore || ''),
     priceHistory: Array.isArray(source.priceHistory) ? source.priceHistory.filter(function (entry) { return entry && typeof entry === 'object' && typeof entry.itemId === 'string'; }) : []
@@ -556,10 +556,10 @@ let activeView = 'list';
 const viewScroll = { list: 0, calculator: 0, profile: 0 };
 const scrollToCalculator = function () {
   window.requestAnimationFrame(function () {
-    const calculator = $('calculatorView');
+    const target = document.querySelector('#keypadPanel .panel-summary') || $('calculatorView');
     const topbar = document.querySelector('.topbar');
     const offset = topbar ? topbar.offsetHeight : 0;
-    const top = calculator.getBoundingClientRect().top + window.scrollY - offset - 8;
+    const top = target.getBoundingClientRect().top + window.scrollY - offset - 8;
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   });
 };
@@ -829,41 +829,44 @@ const calculatePromoDiscount = function (total, promo, usedCap) {
 };
 const getCartTotal = function () {
   return state.calculatorLines.reduce(function (sum, line) {
-    return sum + Math.max(0, Number(line.unitPrice) || 0) * Math.max(0, Number(line.quantity) || 0);
+    const sign = Number(line.sign) === -1 ? -1 : 1;
+    return sum + sign * Math.max(0, Number(line.unitPrice) || 0) * Math.max(0, Number(line.quantity) || 0);
   }, 0);
 };
 const parseEquation = function (equation) {
-  const source = String(equation || '').replace(/,/g, '.').replace(/[^0-9+*.\s]/g, '');
-  if (!source.trim()) return [];
+  const source = String(equation || '').replace(/,/g, '.').replace(/\s/g, '');
+  if (!source || /[^0-9+*.-]/.test(source)) return [];
   const previous = state.calculatorLines.slice();
-  return source.split('+').map(function (raw, index) {
-    const term = raw.trim();
-    const match = term.match(/^(\d+(?:\.\d+)?)(?:\*(\d+(?:\.\d+)?))?$/);
-    if (!match) return null;
-    const old = previous[index] || {};
-    return {
-      id: old.id || makeId(),
-      itemId: old.itemId || '',
-      product: old.product || ('Producto libre ' + (index + 1)),
-      unitPrice: Number(match[1]),
-      quantity: match[2] == null ? 1 : Number(match[2]),
+  const expression = /([+-]?)(\d+(?:\.\d+)?)(?:\*(\d+(?:\.\d+)?))?/g;
+  const lines = [];
+  let match;
+  while ((match = expression.exec(source)) !== null) {
+    const old = previous[lines.length] || {};
+    lines.push({
+      id: old.id || makeId(), itemId: old.itemId || '',
+      product: old.product || ('Producto libre ' + (lines.length + 1)),
+      sign: match[1] === '-' ? -1 : 1,
+      unitPrice: Number(match[2]), quantity: match[3] == null ? 1 : Number(match[3]),
       updatedAt: Date.now()
-    };
-  }).filter(function (line) { return line && line.unitPrice >= 0 && line.quantity > 0; });
+    });
+  }
+  const parsed = lines.map(function (line) { return (line.sign < 0 ? '-' : '+') + line.unitPrice + (line.quantity === 1 ? '' : '*' + line.quantity); }).join('');
+  return parsed.replace(/^\+/, '') === source ? lines.filter(function (line) { return line.quantity > 0; }) : [];
 };
 const generateEquation = function () {
-  return state.calculatorLines.map(function (line) {
+  return state.calculatorLines.map(function (line, index) {
     const price = String(Number(line.unitPrice) || 0);
     const quantity = Number(line.quantity) || 1;
-    return quantity === 1 ? price : price + '*' + quantity;
-  }).join('+');
+    const term = quantity === 1 ? price : price + '*' + quantity;
+    return (Number(line.sign) === -1 ? '-' : index ? '+' : '') + term;
+  }).join('');
 };
 const renderCartTable = function () {
   const lines = state.calculatorLines;
   const empty = lines.length === 0;
   $('calcLineCount').textContent = countLabel(lines.length, 'producto', 'productos');
   $('calcLinesBody').innerHTML = lines.length ? lines.map(function (line) {
-    const subtotal = (Number(line.unitPrice) || 0) * (Number(line.quantity) || 1);
+    const subtotal = (Number(line.sign) === -1 ? -1 : 1) * (Number(line.unitPrice) || 0) * (Number(line.quantity) || 1);
     return '<div class="cart-line" data-line-id="' + escapeHTML(line.id) + '">' +
       '<div class="cart-line-title"><span class="cart-product-name" title="' + escapeHTML(line.product || 'Producto libre') + '">' + escapeHTML(line.product || 'Producto libre') + '</span></div>' +
       '<input class="table-input" type="number" min="0" step="1" inputmode="numeric" data-edit-price="' + escapeHTML(line.id) + '" value="' + escapeHTML(String(line.unitPrice)) + '" aria-label="Precio unitario de ' + escapeHTML(line.product) + '">' +
@@ -1122,6 +1125,7 @@ $('calculatorKeys').addEventListener('click', function (event) {
   let equation = $('calculatorInput').value;
   if (key === 'C') equation = equation.slice(0, -1);
   else if (key === 'CE') equation = '';
+  else if (key === '-') equation = equation.endsWith('+') ? equation.slice(0, -1) + '-' : equation.endsWith('-') ? equation : equation ? equation + '-' : '';
   else equation += key;
   $('calculatorInput').value = equation;
   $('calculatorInput').dispatchEvent(new Event('input', { bubbles: true }));
@@ -1133,13 +1137,35 @@ $('toggleCalculator').addEventListener('click', function () {
   this.textContent = showRule ? 'Volver a calculadora' : 'Regla de tres';
 });
 const calculateRuleOfThree = function () {
-  const a = parseAmount($('reglatres_a').value);
-  const b = parseAmount($('reglatres_b').value);
-  const c = parseAmount($('reglatres_c').value);
-  $('reglatres_result').value = a ? formatNumber((b * c) / a) : '';
+  const products = ['A', 'B'].map(function (key) {
+    const quantity = parseAmount($('compare' + key + 'Quantity').value);
+    const price = parseAmount($('compare' + key + 'Price').value);
+    const unit = $('compare' + key + 'Unit').value;
+    const factor = unit === 'kg' || unit === 'l' ? 1000 : 1;
+    return { key: key, name: $('compare' + key + 'Name').value.trim() || ('Producto ' + key), price: price, quantity: quantity, unit: unit, unitPrice: price / (quantity * factor), valid: price > 0 && quantity > 0 };
+  });
+  const a = products[0], b = products[1], output = $('ruleCompareResult');
+  if (!a.valid || !b.valid) {
+    output.innerHTML = '<p class="compare-hint">Ingresá precio y cantidad de ambos productos para compararlos.</p>';
+    return;
+  }
+  const family = function (unit) { return unit === 'g' || unit === 'kg' ? 'weight' : unit === 'ml' || unit === 'l' ? 'volume' : 'unit'; };
+  if (family(a.unit) !== family(b.unit)) {
+    output.innerHTML = '<p class="compare-hint">Elegí unidades comparables: gramos con kilos, mililitros con litros o unidades.</p>';
+    return;
+  }
+  const factor = family(a.unit) === 'unit' ? 1 : 100;
+  const baseLabel = family(a.unit) === 'weight' ? '100 g' : family(a.unit) === 'volume' ? '100 ml' : 'unidad';
+  const valueA = a.unitPrice * factor, valueB = b.unitPrice * factor;
+  const winner = Math.abs(valueA - valueB) < 0.000001 ? null : valueA < valueB ? a : b;
+  output.innerHTML = '<div class="compare-result-grid">' +
+    '<div class="compare-result-card' + (winner === a ? ' is-better' : '') + '"><span>' + escapeHTML(a.name) + '</span><strong>' + formatMoney(valueA) + '</strong><small>por ' + baseLabel + '</small></div>' +
+    '<div class="compare-result-card' + (winner === b ? ' is-better' : '') + '"><span>' + escapeHTML(b.name) + '</span><strong>' + formatMoney(valueB) + '</strong><small>por ' + baseLabel + '</small></div>' +
+    '</div><p class="compare-verdict">' + (winner ? 'Conviene <strong>' + escapeHTML(winner.name) + '</strong>: tiene el menor precio por ' + baseLabel + '.' : 'Ambos productos tienen el mismo precio por ' + baseLabel + '.') + '</p>';
 };
-['reglatres_a', 'reglatres_b', 'reglatres_c'].forEach(function (id) {
+['compareAName', 'compareAPrice', 'compareAQuantity', 'compareAUnit', 'compareBName', 'compareBPrice', 'compareBQuantity', 'compareBUnit'].forEach(function (id) {
   $(id).addEventListener('input', calculateRuleOfThree);
+  $(id).addEventListener('change', calculateRuleOfThree);
 });
 $('clearCalculator').addEventListener('click', function () {
   if (!state.calculatorLines.length) return;
