@@ -433,10 +433,20 @@ $('listContainer').addEventListener('toggle', function (event) {
    --------------------------------------------------------- */
 let activeView = 'list';
 const viewScroll = { list: 0, calculator: 0, profile: 0 };
+const scrollToCalculator = function () {
+  window.requestAnimationFrame(function () {
+    const calculator = $('calculatorView');
+    const topbar = document.querySelector('.topbar');
+    const offset = topbar ? topbar.offsetHeight : 0;
+    const top = calculator.getBoundingClientRect().top + window.scrollY - offset - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  });
+};
 const setView = function (name) {
   const view = ['list', 'calculator', 'profile'].includes(name) ? name : 'list';
   if (view === activeView) {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (view === 'calculator') scrollToCalculator();
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
   viewScroll[activeView] = window.scrollY;
@@ -455,8 +465,12 @@ const setView = function (name) {
     if (active) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });
-  if (view === 'calculator') renderCalculator();
-  window.scrollTo(0, viewScroll[view] || 0);
+  if (view === 'calculator') {
+    renderCalculator();
+    scrollToCalculator();
+  } else {
+    window.scrollTo({ top: viewScroll[view] || 0, behavior: 'smooth' });
+  }
 };
 const openCalculatorForItem = function (itemId) {
   const item = state.items.find(function (entry) { return entry.id === itemId; });
@@ -512,16 +526,6 @@ document.querySelectorAll('[data-theme-choice]').forEach(function (button) {
 /* ---------------------------------------------------------
    Calculadora original preservada + promociones de supermercados
    --------------------------------------------------------- */
-const LEGACY_LEVELS = [
-  { category: 'General', name: 'Nivel 1', limit: 100000, rate: 0.10 },
-  { category: 'General', name: 'Nivel 2', limit: 200000, rate: 0.15 },
-  { category: 'General', name: 'Nivel 3', limit: 400000, rate: 0.25 },
-  { category: 'General', name: 'Nivel 4', limit: 700000, rate: 0.30 },
-  { category: 'General', name: 'Nivel 5', limit: 1000000, rate: 0.40 },
-  { category: 'Otros', name: 'Contimarket', limit: 1000000, rate: 0.35 },
-  { category: 'Otros', name: 'Tienda Naranja 20%', limit: 2000000, rate: 0.20 },
-  { category: 'Otros', name: 'Tienda Naranja 25%', limit: 2000000, rate: 0.25 }
-];
 let promotions = [];
 let promoLoadedAt = 0;
 let selectedItemId = '';
@@ -533,16 +537,6 @@ const stateLineChanged = function () {
 };
 const formatNumber = function (number) {
   return Math.round(Number(number) || 0).toLocaleString('es-PY');
-};
-const legacyDiscount = function (total, level, usedCap) {
-  const available = Math.max((Number(level.limit) || 0) - usedCap, 0);
-  const saving = Math.min(total, available) * level.rate;
-  return {
-    percent: level.rate * 100,
-    cap: Number(level.limit) || 0,
-    saving: Math.min(total, saving),
-    final: Math.max(0, total - saving)
-  };
 };
 const normalizePromoCap = function (promo) {
   const direct = Number(promo && (promo.discount_cap || promo.max_discount || promo.maxDiscount || promo.top || promo.cap));
@@ -672,11 +666,14 @@ const loadPromotions = async function () {
   }
 };
 const populateDiscountSelect = function (autoSuggest) {
-  const current = $('levelSelect').value || 'all', offers = getStorePromotions(), groups = {};
+  const current = $('levelSelect').value || '';
+  const hasStore = !!normalize($('storeSelect').value);
+  const offers = getStorePromotions(), groups = {};
   offers.forEach(function (entry) { const bank = promotionBankLabel(entry.promo); (groups[bank] ||= []).push(entry); });
-  let html = '<option value="all">Comparar ofertas encontradas</option>';
+
+  let html = '<option value="">Seleccioná un beneficio</option><option value="all">Comparar ofertas encontradas</option>';
   if (offers.length) {
-    html += '<optgroup label="' + (normalize($('storeSelect').value) ? 'Coincidencias de PromoScraper PY' : 'Supermercados primero') + '">';
+    html += '<optgroup label="' + (hasStore ? 'Coincidencias de PromoScraper PY' : 'Supermercados disponibles') + '">';
     const bankOrder = Array.from(new Set(offers.map(function (entry) { return promotionBankLabel(entry.promo); })));
     bankOrder.forEach(function (bank) {
       groups[bank].forEach(function (entry) {
@@ -686,18 +683,20 @@ const populateDiscountSelect = function (autoSuggest) {
     });
     html += '</optgroup>';
   }
-  html += '<optgroup label="Niveles originales"><option value="legacy:all">Todos los niveles originales</option>';
-  ['General', 'Otros'].forEach(function (category) {
-    html += '<option value="legacy-category:' + category + '">Todos ' + category + '</option>';
-    LEGACY_LEVELS.forEach(function (level, index) {
-      if (level.category === category) html += '<option value="legacy:' + index + '">' + escapeHTML(level.name) + '</option>';
-    });
-  });
+  html += '<optgroup label="Porcentaje de descuento">';
+  for (let percent = 5; percent <= 90; percent += 5) {
+    html += '<option value="percent:' + percent + '">' + percent + '% de descuento</option>';
+  }
   html += '</optgroup><option value="manual">Descuento manual</option>';
   $('levelSelect').innerHTML = html;
-  const preferred = autoSuggest && offers.length ? 'promo:' + offers[0].index : current;
+
+  let preferred = current;
+  const isIndependentDiscount = current === 'manual' || current.indexOf('percent:') === 0;
+  if (!hasStore && !isIndependentDiscount) preferred = '';
+  if (autoSuggest && hasStore && !preferred && offers.length) preferred = 'promo:' + offers[0].index;
   const valid = Array.from($('levelSelect').options).some(function (option) { return option.value === preferred; });
-  $('levelSelect').value = valid ? preferred : 'all'; renderDiscountTable();
+  $('levelSelect').value = valid ? preferred : '';
+  renderDiscountTable();
 };
 const calculatePromoDiscount = function (total, promo, usedCap) {
   const percent = promotionDiscount(promo);
@@ -760,43 +759,42 @@ const renderCartTable = function () {
   $('totalAmount').textContent = formatMoney(getCartTotal());
 };
 const getDiscountRows = function () {
-  const selected = $('levelSelect').value || 'all';
+  const selected = $('levelSelect').value || '';
   const used = Math.max(0, parseAmount($('topeUsadoInput').value));
   const total = getCartTotal();
-  const manualPercent = Math.max(0, Math.min(100, parseAmount($('manualDiscountInput').value)));
-  if (selected === 'manual') return [{
-    key: 'manual', type: 'manual', name: 'Descuento manual',
-    bank: 'Manual', percent: manualPercent, cap: 0,
-    saving: total * manualPercent / 100, final: total - (total * manualPercent / 100)
-  }];
+
+  if (selected === 'manual') {
+    const percent = Math.max(0, Math.min(100, parseAmount($('manualDiscountInput').value)));
+    const saving = total * percent / 100;
+    return [{
+      key: 'manual', type: 'manual', name: 'Descuento manual',
+      bank: 'Manual', percent: percent, cap: 0,
+      saving: saving, final: Math.max(0, total - saving)
+    }];
+  }
+
+  if (selected.indexOf('percent:') === 0) {
+    const percent = Math.max(5, Math.min(90, Number(selected.slice(8)) || 0));
+    const saving = total * percent / 100;
+    return [{
+      key: selected, type: 'percentage', name: 'Descuento ' + percent + '%',
+      bank: 'Porcentaje', percent: percent, cap: 0,
+      saving: saving, final: Math.max(0, total - saving)
+    }];
+  }
+
   if (selected.indexOf('promo:') === 0) {
     const index = Number(selected.slice(6));
     const promo = promotions[index];
     return promo ? [Object.assign({ key: selected, type: 'promo', promo: promo, index: index, name: promotionStore(promo), bank: promotionBankLabel(promo) },
       calculatePromoDiscount(total, promo, used))] : [];
   }
-  let levels = LEGACY_LEVELS.map(function (level, index) { return { key: 'legacy:' + index, type: 'legacy', level: level, index: index, name: level.name, bank: 'Nivel original' }; });
-  if (selected === 'legacy:all') {
-    // all legacy discount levels
-  } else if (selected.indexOf('legacy-category:') === 0) {
-    const category = selected.slice('legacy-category:'.length);
-    levels = levels.filter(function (row) { return row.level.category === category; });
-  } else if (selected.indexOf('legacy:') === 0) {
-    const index = Number(selected.slice(7));
-    levels = levels.filter(function (row) { return row.index === index; });
-  } else if (selected === 'all') {
-    const offers = getStorePromotions();
-    if (offers.length) {
-      return offers.map(function (entry) {
-        return Object.assign({
-          key: 'promo:' + entry.index, type: 'promo', promo: entry.promo,
-          index: entry.index, name: promotionStore(entry.promo), bank: promotionBankLabel(entry.promo)
-        }, calculatePromoDiscount(total, entry.promo, used));
-      });
-    }
-  }
-  return levels.map(function (row) {
-    return Object.assign(row, legacyDiscount(total, row.level, used), { cap: row.level.limit });
+
+  return getStorePromotions().map(function (entry) {
+    return Object.assign({
+      key: 'promo:' + entry.index, type: 'promo', promo: entry.promo,
+      index: entry.index, name: promotionStore(entry.promo), bank: promotionBankLabel(entry.promo)
+    }, calculatePromoDiscount(total, entry.promo, used));
   });
 };
 const bestDiscount = function (rows) {
@@ -804,8 +802,7 @@ const bestDiscount = function (rows) {
 };
 const updateSummaryDiscount = function (rows) {
   const selected = $('levelSelect').value || 'all';
-  let active = selected === 'all' || selected === 'legacy:all' ||
-    selected.indexOf('legacy-category:') === 0 ? bestDiscount(rows) : rows[0] || null;
+  let active = selected === 'all' ? bestDiscount(rows) : rows[0] || null;
   if (!active) active = { saving: 0, final: getCartTotal() };
   if (selected === 'manual') {
     const percent = Math.max(0, Math.min(100, parseAmount($('manualDiscountInput').value)));
@@ -820,7 +817,7 @@ const renderDiscountTable = function () {
   if (!$('totalTable')) return;
   const rows = getDiscountRows();
   const selected = $('levelSelect').value || 'all';
-  const compareAll = selected === 'all' || selected === 'legacy:all' || selected.indexOf('legacy-category:') === 0;
+  const compareAll = selected === 'all';
   const bestKey = (bestDiscount(rows) || {}).key;
   const isChosen = function (row) { return selected === row.key || (compareAll && row.key === bestKey); };
   const secondary = function (row) {
@@ -942,9 +939,15 @@ const refreshStoreSearch = function () {
 };
 $('storeSelect').addEventListener('input', refreshStoreSearch);
 $('storeSelect').addEventListener('change', refreshStoreSearch);
-$('levelSelect').addEventListener('change', renderDiscountTable);
-['topeUsadoInput', 'manualDiscountInput'].forEach(function (id) {
-  $(id).addEventListener('input', renderDiscountTable);
+$('levelSelect').addEventListener('change', function () {
+  const selected = this.value || '';
+  if (selected.indexOf('percent:') === 0) $('manualDiscountInput').value = selected.slice(8);
+  renderDiscountTable();
+});
+$('topeUsadoInput').addEventListener('input', renderDiscountTable);
+$('manualDiscountInput').addEventListener('input', function () {
+  if (($('levelSelect').value || '').indexOf('percent:') === 0) $('levelSelect').value = 'manual';
+  renderDiscountTable();
 });
 $('discountCompare').addEventListener('click', function (event) {
   const button = event.target.closest('[data-use-discount]');

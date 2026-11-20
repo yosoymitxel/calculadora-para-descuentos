@@ -191,14 +191,14 @@ svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColo
 .postit-head::-webkit-details-marker { display: none; }
 .postit-title-wrap { min-width: 0; flex: 1; }
 .postit-title-wrap h2 {
-  display: -webkit-box;
+  display: block;
   overflow: hidden;
   margin: 0;
   color: var(--text);
   font: 700 13px/1.25 var(--display);
   letter-spacing: -.01em;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .postit-progress {
   display: inline-grid;
