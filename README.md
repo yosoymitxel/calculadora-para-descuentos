@@ -1,41 +1,36 @@
-# Compra · Lista y descuentos
+# Compra · Lista, calculadora y descuentos
 
-Aplicación web para organizar compras de supermercado en Paraguay y contrastar precios con promociones bancarias.
+Aplicación web para organizar compras en Paraguay y calcular el total de la compra con descuentos bancarios.
 
-## Interfaz
+## Flujo principal
 
-- Menú inferior con dos secciones: **Lista** y **Perfil**.
-- Los post-its representan grupos completos (carnes, pastas, panificados, frutas, limpieza, etc.). Los productos son filas checkeables dentro de cada grupo.
-- Buscador y filtros por pendientes, prioridad y comprados.
-- Etiquetas por producto: **Prioridad** y **Super preferido**.
-- Temas oscuro y claro.
+La navegación inferior tiene tres entradas permanentes: **Lista**, **Calculadora** (al centro) y **Perfil**.
 
-## Calculadora
+1. **Lista:** los post-its representan grupos completos de productos; los artículos se marcan como comprados o pendientes. Cada artículo puede llevar las etiquetas Prioridad y Super preferido.
+2. **Calculadora:** tocar un producto de la lista abre la calculadora con ese producto asociado. Desde la calculadora también se pueden agregar productos libres que no estén en la lista. Cada línea tiene precio unitario y cantidad, y aparece en la tabla de lo que se va comprando.
+3. **Perfil:** cuenta, sincronización, tema claro/oscuro y herramientas de respaldo.
 
-Al tocar un producto desde la lista se abre la pantalla de calculadora con ese producto seleccionado. Se puede cargar precio y cantidad, sumar más productos, actualizar líneas, editar la ecuación, quitar productos y volver a la lista sin perder la sumatoria.
+## Calculadora original conservada
 
-Se conserva el teclado numérico y la calculadora de regla de tres de la versión original. Los descuentos se consultan desde `promos.json` del proyecto PromoScraper PY; se filtran promociones de supermercados, se comparan porcentajes, topes detectables y bancos, y se puede seleccionar una promoción o ingresar un descuento manual.
+La calculadora conserva sus elementos originales: selector de niveles, tope usado, tabla comparativa de descuentos, tabla de productos y cantidades, total, ecuación editable, teclado numérico, exportación CSV y calculadora de regla de tres.
 
-## Historial y respaldo
+La adaptación agrega el selector de supermercado/lugar de compra. Sus descuentos bancarios se consultan desde `promos.json` de PromoScraper PY; se filtran por la categoría de supermercados y se comparan por banco, porcentaje, tarjetas y vigencia. Los niveles originales (General, Contimarket y Tienda Naranja) siguen disponibles. También se puede aplicar un porcentaje manual.
 
-- **Guardar precios e historial** crea un registro por producto con precio unitario, cantidad, total, supermercado, banco, tarjetas, promoción, descuento y fecha.
-- Exportación de la sumatoria a CSV.
-- Exportación del historial a CSV.
-- Exportación e importación de respaldo JSON (lista, sumatoria, preferencias e historial).
+## Historial y cuentas
 
-## Cuentas y almacenamiento
+Al guardar los precios se conserva producto, asociación con la lista (cuando existe), precio unitario, cantidad, supermercado, banco, promoción, descuento estimado y fecha. La sumatoria se puede exportar a CSV; el historial tiene su propia exportación y respaldo JSON importable.
 
-Sin sesión, la aplicación funciona con almacenamiento local. Al iniciar sesión, sincroniza lista, preferencias, sumatoria e historial por usuario en `panel_profiles.data.shoppingList` del proyecto Supabase que ya utiliza el panel Web-scrapping.
+Sin iniciar sesión, la app funciona en el navegador. Con sesión, sincroniza por usuario la lista, la sumatoria y el historial usando `panel_profiles.data.shoppingList` del proyecto Supabase del panel Web-scrapping.
 
-Las promociones son de solo lectura y proceden de:
+## Fuente de promociones
 
 `https://yosoymitxel.github.io/promociones-tarjetas-bancos-paraguay-py/promos.json`
 
-Se mantiene una copia local para poder seguir usando la lista y la calculadora cuando el origen no esté disponible.
+Se guarda una copia local para seguir usando la aplicación cuando la fuente no responda. El porcentaje y los topes se muestran como estimaciones; siempre hay que revisar las condiciones oficiales de cada banco.
 
 ## Desarrollo local
 
-No necesita build ni dependencias de Node:
+No requiere build ni dependencias de Node:
 
 ```bash
 python3 -m http.server 8080

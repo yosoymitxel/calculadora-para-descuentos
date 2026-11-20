@@ -146,82 +146,101 @@
       <p class="profile-footnote">Las promociones se consultan desde PromoScraper PY. El descuento final puede depender de topes, tarjetas y condiciones de cada banco.</p>
     </section>
   <section class="view calculator-view" id="calculatorView" aria-labelledby="calculatorTitle" hidden>
-    <div class="calculator-heading">
-      <button class="back-button" id="backToList" type="button"><span aria-hidden="true">←</span> Volver a la lista</button>
-      <div>
-        <span class="eyebrow">SUMATORIA DE COMPRA</span>
-        <h1 id="calculatorTitle">Calculadora</h1>
-        <p>Agregá productos, cantidades y compará los descuentos bancarios disponibles para el supermercado.</p>
+    <header class="calculator-heading">
+      <span class="eyebrow">SUMATORIA DE COMPRA</span>
+      <h1 id="calculatorTitle">Calculadora</h1>
+      <p>La calculadora original, ahora conectada a tus productos y a las promociones de supermercados.</p>
+    </header>
+
+    <section class="calc-context panel-card" aria-labelledby="discountContextTitle">
+      <div class="panel-card-heading">
+        <div><span class="eyebrow">LUGAR DE COMPRA Y BENEFICIO</span><h2 id="discountContextTitle">¿Dónde vas a comprar?</h2></div>
+        <span class="source-status" id="promoStatus">Consultando PromoScraper...</span>
       </div>
-    </div>
-    <section class="calc-add-card" aria-labelledby="selectedProductTitle">
+      <div class="calc-context-grid">
+        <label><span class="field-label">Lugar de compra / supermercado</span>
+          <select class="field-input" id="storeSelect">
+            <option value="">Todos los supermercados</option>
+          </select>
+        </label>
+        <label><span class="field-label">Descuento / beneficio</span>
+          <select class="field-input" id="levelSelect">
+            <option value="all">Comparar todos</option>
+          </select>
+        </label>
+        <label><span class="field-label">Tope usado hasta ahora (₲)</span>
+          <input class="field-input" type="number" id="topeUsadoInput" min="0" step="1" value="0" inputmode="numeric">
+        </label>
+        <label><span class="field-label">Descuento manual (%)</span>
+          <input class="field-input" type="number" id="manualDiscountInput" min="0" max="100" step="0.1" value="0" inputmode="decimal">
+        </label>
+      </div>
+      <p class="promo-description" id="promoDescription">Elegí un supermercado para ver los descuentos bancarios disponibles. También se mantienen los niveles originales de la calculadora.</p>
+      <div class="table-wrap">
+        <table class="calc-table discount-table" id="totalTable">
+          <thead><tr><th>Beneficio / nivel</th><th>Banco / tarjeta</th><th>%</th><th>Total estimado</th><th>Descuento</th><th>Tope</th><th></th></tr></thead>
+          <tbody><tr><td colspan="7" class="table-empty">Cargando descuentos...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="calc-add-card" aria-labelledby="addPurchaseTitle">
       <div class="calc-add-head">
-        <div><span class="eyebrow">PRODUCTO SELECCIONADO</span><h2 id="selectedProductTitle">Elegí un producto de tu lista</h2></div>
-        <span class="calc-item-state" id="calcProductGroup">Sin producto</span>
+        <div><span class="eyebrow">AGREGAR A LA COMPRA</span><h2 id="addPurchaseTitle">Producto y cantidad</h2></div>
+        <span class="calc-item-state" id="calcProductGroup">Libre · sin asociar</span>
       </div>
       <div class="calc-add-grid">
-        <label><span class="field-label">Precio unitario (₲)</span><input class="field-input" id="calcUnitPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej. 25000"></label>
-        <label><span class="field-label">Cantidad</span><input class="field-input" id="calcQuantity" type="number" min="0.01" step="any" value="1" inputmode="decimal"></label>
-        <label class="calc-store-field"><span class="field-label">Supermercado de esta compra</span><input class="field-input" id="calcStore" list="supermarketOptions" placeholder="Ej. Stock, Superseis, Casa Rica..."></label>
-        <datalist id="supermarketOptions"></datalist>
-        <button class="primary-button calc-add-button" id="addCalcItem" type="button">Agregar a la sumatoria</button>
+        <label class="calc-name-field"><span class="field-label">Producto (de tu lista o libre)</span>
+          <input class="field-input" id="calcProductName" type="text" list="shoppingProductOptions" placeholder="Ej. Huevo, leche o producto libre" autocomplete="off">
+        </label>
+        <label><span class="field-label">Precio unitario (₲)</span>
+          <input class="field-input" id="calcUnitPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej. 25000">
+        </label>
+        <label><span class="field-label">Cantidad</span>
+          <input class="field-input" id="calcQuantity" type="number" min="0.01" step="any" value="1" inputmode="decimal">
+        </label>
+        <button class="primary-button calc-add-button" id="addCalcItem" type="button">Agregar a la compra</button>
       </div>
-      <p class="calc-last-price" id="calcLastPrice">Tocá un producto de la lista para cargarlo aquí.</p>
+      <datalist id="shoppingProductOptions"></datalist>
+      <p class="calc-last-price" id="calcLastPrice">Podés entrar desde un producto de la lista o escribir uno que no esté incluido.</p>
     </section>
+
     <section class="calc-cart panel-card" aria-labelledby="cartTitle">
       <div class="panel-card-heading">
-        <div><span class="eyebrow">TUS PRODUCTOS</span><h2 id="cartTitle">Sumatoria</h2></div>
+        <div><span class="eyebrow">LO QUE VAS COMPRANDO</span><h2 id="cartTitle">Lista de compra / sumatoria</h2></div>
         <span class="count-pill" id="calcLineCount">0 productos</span>
       </div>
       <div class="table-wrap">
         <table class="calc-table" id="resultTable">
-          <thead><tr><th>Producto</th><th>Precio unitario</th><th>Cantidad</th><th>Total</th><th></th></tr></thead>
+          <thead><tr><th>Producto</th><th>Precio unitario</th><th>Cantidad</th><th>Total producto</th><th></th></tr></thead>
           <tbody id="calcLinesBody"><tr><td colspan="5" class="table-empty">Todavía no agregaste productos.</td></tr></tbody>
         </table>
       </div>
-      <div class="calc-cart-footer">
-        <button class="text-button" id="clearCalculator" type="button">Vaciar sumatoria</button>
-        <div><span>Total sin descuento</span><strong id="totalAmount">₲ 0</strong></div>
-      </div>
-    </section>
-    <section class="panel-card discount-panel" aria-labelledby="discountTitle">
-      <div class="panel-card-heading">
-        <div><span class="eyebrow">DESCUENTOS DISPONIBLES</span><h2 id="discountTitle">Comparar promociones</h2></div>
-        <span class="source-status" id="promoStatus">Consultando PromoScraper...</span>
-      </div>
-      <div class="discount-controls">
-        <label class="discount-select-field"><span class="field-label">Promoción para calcular el total final</span><select class="field-input" id="levelSelect"><option value="">Sin descuento seleccionado</option></select></label>
-        <label><span class="field-label">Tope ya utilizado (₲)</span><input class="field-input" id="topeUsadoInput" type="number" min="0" step="1" value="0" inputmode="numeric"></label>
-        <label><span class="field-label">Descuento manual (%)</span><input class="field-input" id="manualDiscountInput" type="number" min="0" max="100" step="0.1" value="0" inputmode="decimal"></label>
-      </div>
-      <p class="promo-description" id="promoDescription">Se consultan las promociones de supermercados publicadas por PromoScraper PY. Podés filtrar por supermercado o elegir una oferta de la tabla.</p>
-      <div class="table-wrap">
-        <table class="calc-table discount-table" id="totalTable">
-          <thead><tr><th>Supermercado / promoción</th><th>Banco / tarjeta</th><th>Descuento</th><th>Tope</th><th>Ahorro</th><th>Total final</th><th></th></tr></thead>
-          <tbody><tr><td colspan="7" class="table-empty">Cargando promociones...</td></tr></tbody>
-        </table>
-      </div>
       <div class="calc-final-row">
-        <div><span>Descuento aplicado estimado</span><strong id="discountAmount">₲ 0</strong></div>
+        <div><span>Total</span><strong id="totalAmount">₲ 0</strong></div>
+        <div><span>Descuento</span><strong id="discountAmount">₲ 0</strong></div>
         <div><span>Total con descuento</span><strong id="finalAmount">₲ 0</strong></div>
       </div>
-      <p class="calculation-note">Los resultados son estimaciones. Verificá vigencia, tarjetas habilitadas, días, topes y exclusiones en las bases de cada banco antes de pagar.</p>
-      <div class="calc-action-row">
-        <button class="primary-button" id="saveCalcPrices" type="button">Guardar precios e historial</button>
-        <button class="secondary-button" id="exportCalcCsv" type="button">Exportar sumatoria CSV</button>
+      <div class="calc-cart-footer">
+        <button class="secondary-button" id="toggleCalculator" type="button">Regla de tres</button>
+        <button class="text-button" id="clearCalculator" type="button">Vaciar lista de compra</button>
+        <button class="secondary-button" id="exportCalcCsv" type="button">Exportar a CSV</button>
       </div>
     </section>
+
     <section class="panel-card keypad-panel" aria-labelledby="equationTitle">
       <div class="panel-card-heading">
-        <div><span class="eyebrow">ENTRADA MANUAL</span><h2 id="equationTitle">Ecuación de la compra</h2></div>
-        <button class="secondary-button" id="toggleCalculator" type="button">Regla de tres</button>
+        <div><span class="eyebrow">CALCULADORA ORIGINAL</span><h2 id="equationTitle">Ecuación de compra</h2></div>
       </div>
-      <textarea id="calculatorInput" class="field-input equation-input" rows="2" spellcheck="false" aria-label="Ecuación de precios" placeholder="Ej. 25000*2+18000"></textarea>
-      <div class="calc-keypad" id="calculatorKeys">
-        <button class="calc-key" type="button" data-key="1">1</button><button class="calc-key" type="button" data-key="2">2</button><button class="calc-key" type="button" data-key="3">3</button><button class="calc-key key-op" type="button" data-key="+">+</button>
-        <button class="calc-key" type="button" data-key="4">4</button><button class="calc-key" type="button" data-key="5">5</button><button class="calc-key" type="button" data-key="6">6</button><button class="calc-key key-op" type="button" data-key="*">×</button>
-        <button class="calc-key" type="button" data-key="7">7</button><button class="calc-key" type="button" data-key="8">8</button><button class="calc-key" type="button" data-key="9">9</button><button class="calc-key" type="button" data-key="0">0</button>
-        <button class="calc-key key-op" type="button" data-key="000">000</button><button class="calc-key key-warn" type="button" data-key="C">Borrar</button><button class="calc-key key-danger" type="button" data-key="CE">Borrar todo</button><button class="calc-key key-op" type="button" data-key=".">.</button>
+      <div id="mainCalculator">
+        <label class="field-label" for="calculatorInput">Podés escribir la cuenta directamente: precio*cantidad+precio...</label>
+        <textarea id="calculatorInput" class="field-input equation-input" rows="3" spellcheck="false" placeholder="Ej. 25000*2+18000"></textarea>
+        <div class="calc-keypad" id="calculatorKeys">
+          <button class="calc-key" type="button" data-key="1">1</button><button class="calc-key" type="button" data-key="2">2</button><button class="calc-key" type="button" data-key="3">3</button><button class="calc-key key-op" type="button" data-key="+">+</button>
+          <button class="calc-key" type="button" data-key="4">4</button><button class="calc-key" type="button" data-key="5">5</button><button class="calc-key" type="button" data-key="6">6</button><button class="calc-key key-op" type="button" data-key="*">×</button>
+          <button class="calc-key" type="button" data-key="7">7</button><button class="calc-key" type="button" data-key="8">8</button><button class="calc-key" type="button" data-key="9">9</button><button class="calc-key" type="button" data-key="0">0</button>
+          <button class="calc-key key-op" type="button" data-key="000">000</button><button class="calc-key key-warn" type="button" data-key="C">Borrar</button><button class="calc-key key-danger" type="button" data-key="CE">Borrar todo</button><button class="calc-key key-op" type="button" data-key=".">.</button>
+        </div>
       </div>
       <div id="reglaTresCalculator" class="rule-three" hidden>
         <h3>Calculadora de regla de tres</h3>
@@ -232,17 +251,25 @@
           <label><span class="field-label">Resultado</span><input class="field-input" type="text" id="reglatres_result" placeholder="Resultado" readonly></label>
         </div>
       </div>
+      <div class="calc-action-row">
+        <button class="primary-button" id="saveCalcPrices" type="button">Guardar precios en el historial</button>
+      </div>
+      <p class="calculation-note">Los descuentos estimados no sustituyen las condiciones oficiales del banco: revisá vigencia, tarjetas, días y topes antes de pagar.</p>
     </section>
   </section>
 
   </main>
 
   <nav class="bottom-nav" id="bottomNav" aria-label="Navegación principal">
-    <button class="nav-item active" type="button" data-view="list" aria-current="page">
+    <button class="nav-item active" type="button" data-view="list" aria-current="page" aria-label="Lista de compra">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="m8 12 2.5 2.5L16 9"></path></svg>
       <span>Lista</span>
     </button>
-    <button class="nav-item" type="button" data-view="profile">
+    <button class="nav-item nav-calculator" type="button" data-view="calculator" aria-label="Calculadora">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M8 7h8M8 11h2m4 0h2m-8 4h2m4 0h2m-8 3h2"></path></svg>
+      <span>Calculadora</span>
+    </button>
+    <button class="nav-item" type="button" data-view="profile" aria-label="Perfil">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path></svg>
       <span>Perfil</span>
     </button>
