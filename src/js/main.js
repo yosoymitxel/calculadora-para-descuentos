@@ -1455,9 +1455,8 @@ window.setInterval(function () {
    --------------------------------------------------------- */
 applyTheme();
 renderList();
-if (window.matchMedia('(min-width: 900px)').matches) {
-  $('discountCompare').open = true;
-}
+$('discountCompare').open = false;
+$('keypadPanel').open = true;
 renderAccount();
 if (session && session.userId && activeUserId !== String(session.userId)) switchUser(session.userId);
 if (session) {
