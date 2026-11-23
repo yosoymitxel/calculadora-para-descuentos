@@ -53,9 +53,10 @@ El catálogo inicial vigente contiene 23 grupos y se aplica mediante la versión
 
 `sw.js` guarda la app (HTML, CSS, JS y fuentes) en caché tras la primera visita, así que abre sin internet. La lista, el historial y la última copia de promociones ya viven en `localStorage`.
 
-El APK se arma con [WebToApp](https://github.com/shiaho777/web-to-app) desde el teléfono (no tiene modo de línea de comandos):
+El APK se compila solo con GitHub Actions (`.github/workflows/apk.yml`): al subir un tag `v*` empaqueta la web con Capacitor, compila con Gradle y adjunta `compra.apk` al release. Los archivos van dentro del APK, así que funciona sin conexión desde el primer uso.
 
-1. Instalá WebToApp y creá una app nueva. Para que funcione sin conexión desde el primer uso, elegí el tipo de proyecto HTML/web local e importá el ZIP de este repositorio (Code → Download ZIP). Si en cambio envolvés la URL de GitHub Pages, la app necesita internet la primera vez que se abre y después funciona offline gracias a `sw.js`.
-2. Compilá el APK y subilo como asset de un release nuevo en GitHub (Releases → Draft a new release).
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
 
-El botón **Descargar .apk** del Perfil apunta a `releases/latest`, y se oculta cuando la app ya corre dentro del APK.
+El botón **Descargar .apk** del Perfil descarga `releases/latest/download/compra.apk` y se oculta cuando la app ya corre dentro del APK. El APK va firmado con clave de depuración: Android pide permitir "orígenes desconocidos" y no sirve para Play Store.
