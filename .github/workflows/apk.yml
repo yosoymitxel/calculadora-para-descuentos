@@ -1,10 +1,11 @@
 # Empaqueta la web con Capacitor (archivos dentro del APK, funciona offline) y la publica en Releases.
-# Se dispara al subir un tag v* (ej.: git tag v1.0.0 && git push origin v1.0.0).
+# Cada push a main publica un release nuevo (v1.0.<n>).
 name: APK
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,4 +31,5 @@ jobs:
         run: cd build/android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../../compra.apk
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.${{ github.run_number }}
           files: compra.apk

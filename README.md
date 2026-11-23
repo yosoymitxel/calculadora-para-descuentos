@@ -53,10 +53,6 @@ El catálogo inicial vigente contiene 23 grupos y se aplica mediante la versión
 
 `sw.js` guarda la app (HTML, CSS, JS y fuentes) en caché tras la primera visita, así que abre sin internet. La lista, el historial y la última copia de promociones ya viven en `localStorage`.
 
-El APK se compila solo con GitHub Actions (`.github/workflows/apk.yml`): al subir un tag `v*` empaqueta la web con Capacitor, compila con Gradle y adjunta `compra.apk` al release. Los archivos van dentro del APK, así que funciona sin conexión desde el primer uso.
-
-```bash
-git tag v1.0.0 && git push origin v1.0.0
-```
+El APK se compila solo con GitHub Actions (`.github/workflows/apk.yml`): en cada push a `main` empaqueta la web con Capacitor, compila con Gradle y adjunta `compra.apk` al release. Los archivos van dentro del APK, así que funciona sin conexión desde el primer uso.
 
 El botón **Descargar .apk** del Perfil descarga `releases/latest/download/compra.apk` y se oculta cuando la app ya corre dentro del APK. El APK va firmado con clave de depuración: Android pide permitir "orígenes desconocidos" y no sirve para Play Store.
