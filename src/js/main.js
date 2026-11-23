@@ -1632,3 +1632,6 @@ document.addEventListener('keydown', function (event) {
   }
   if (event.key === 'Escape' && !$('calculatorView').hidden) setView('list');
 });
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () {});
+// La WebView de Android (APK) incluye "; wv)" en el user agent: ahí no tiene sentido ofrecer la descarga.
+if (/; wv\)/.test(navigator.userAgent)) $('apkCard').hidden = true;

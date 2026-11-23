@@ -344,6 +344,8 @@ input[type="number"] { -moz-appearance: textfield; }
   transition: transform .12s, filter .12s;
 }
 .primary-button { background: var(--accent); color: var(--accent-text); }
+.primary-button[href] { text-decoration: none; }
+.apk-copy { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .secondary-button { background: var(--surface-2); color: var(--text); }
 .primary-button:active, .secondary-button:active { transform: scale(.98); }
 .primary-button:disabled, .secondary-button:disabled { cursor: default; opacity: .45; }

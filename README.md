@@ -48,3 +48,14 @@ El buscador de comercio consulta el catálogo completo de PromoScraper PY y orde
 ## Catálogo inicial por usuario
 
 El catálogo inicial vigente contiene 23 grupos y se aplica mediante la versión 2. Las listas guardadas de versiones anteriores se migran una sola vez cuando cada usuario abre la aplicación o sincroniza su cuenta. La migración sustituye los productos base anteriores, conserva grupos y productos personalizados, el historial y la calculadora. La versión queda almacenada en la lista local y en el perfil de Supabase: los cambios futuros al catálogo predeterminado no sobrescriben listas que ya fueron migradas. No incrementar DEFAULT_CATALOG_VERSION sin una nueva solicitud explícita de actualización global.
+
+## Uso sin conexión y APK para Android
+
+`sw.js` guarda la app (HTML, CSS, JS y fuentes) en caché tras la primera visita, así que abre sin internet. La lista, el historial y la última copia de promociones ya viven en `localStorage`.
+
+El APK se arma con [WebToApp](https://github.com/shiaho777/web-to-app) desde el teléfono (no tiene modo de línea de comandos):
+
+1. Instalá WebToApp y creá una app nueva. Para que funcione sin conexión desde el primer uso, elegí el tipo de proyecto HTML/web local e importá el ZIP de este repositorio (Code → Download ZIP). Si en cambio envolvés la URL de GitHub Pages, la app necesita internet la primera vez que se abre y después funciona offline gracias a `sw.js`.
+2. Compilá el APK y subilo como asset de un release nuevo en GitHub (Releases → Draft a new release).
+
+El botón **Descargar .apk** del Perfil apunta a `releases/latest`, y se oculta cuando la app ya corre dentro del APK.
