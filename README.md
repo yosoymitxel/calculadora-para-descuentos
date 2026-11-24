@@ -55,7 +55,7 @@ El catálogo inicial vigente contiene 23 grupos y se aplica mediante la versión
 
 El APK se compila solo con GitHub Actions (`.github/workflows/apk.yml`): en cada push a `main` empaqueta la web con Capacitor, compila con Gradle y adjunta `compra.apk` al release. Los archivos van dentro del APK, así que funciona sin conexión desde el primer uso.
 
-El botón **Descargar .apk** del Perfil descarga `releases/latest/download/compra.apk` y se oculta cuando la app ya corre dentro del APK. Dentro del APK, la app consulta el último release al abrirse y, si hay uno más nuevo, muestra **Actualizar app** en el Perfil: se descarga y se instala encima sin perder datos. Todas las compilaciones usan la misma clave (`android/debug.keystore`; Android solo instala una actualización firmada con la misma clave). Los APK anteriores a este cambio tienen otra clave: hay que desinstalarlos una vez. El APK va firmado con clave de depuración: Android pide permitir "orígenes desconocidos" y no sirve para Play Store.
+El botón **Descargar .apk** del Perfil descarga `releases/latest/download/compra.apk` y se oculta cuando la app ya corre dentro del APK. Dentro del APK, la app consulta el último release al abrirse y, si hay uno más nuevo, muestra **Actualizar app** en el Perfil: se descarga y se instala encima sin perder datos. El APK es de producción (`assembleRelease`) y siempre va firmado con la misma clave, guardada en los secretos del repo `ANDROID_KEYSTORE_B64` (keystore PKCS12 en base64, alias `compra`) y `ANDROID_KEYSTORE_PASSWORD`; sin ellos el workflow falla. Si se pierde la clave, las versiones instaladas no se pueden actualizar: hay que desinstalar. Android pide permitir "orígenes desconocidos".
 
 ## Precios de referencia por local
 
