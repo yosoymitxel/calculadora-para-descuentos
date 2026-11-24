@@ -1657,5 +1657,23 @@ document.addEventListener('keydown', function (event) {
   if (event.key === 'Escape' && !$('calculatorView').hidden) setView('list');
 });
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(function () {});
-// La WebView de Android (APK) incluye "; wv)" en el user agent: ahí no tiene sentido ofrecer la descarga.
-if (/; wv\)/.test(navigator.userAgent)) $('apkCard').hidden = true;
+// Dentro del APK (la WebView pone "; wv)" en el user agent) la tarjeta solo aparece si hay una versión más nueva.
+// El workflow escribe el número de compilación en data-build; los releases se llaman v1.0.<n>.
+const checkApkUpdate = async function () {
+  const card = $('apkCard'), build = Number(card.dataset.build) || 0;
+  card.hidden = true;
+  if (!build || !navigator.onLine) return;
+  try {
+    const response = await fetch('https://api.github.com/repos/yosoymitxel/calculadora-para-descuentos/releases/latest', { cache: 'no-store' });
+    if (!response.ok) return;
+    const latest = Number(String((await response.json()).tag_name || '').split('.').pop()) || 0;
+    if (latest <= build) return;
+    $('apkTitle').textContent = 'Actualización disponible';
+    $('apkCopy').textContent = 'Hay una versión nueva (1.0.' + latest + '; tenés la 1.0.' + build + '). Descargala y abrila para instalarla encima: tus listas se conservan.';
+    $('apkLink').textContent = 'Actualizar app';
+    $('apkLink').removeAttribute('target');
+    card.hidden = false;
+    showToast('Hay una versión nueva de la app');
+  } catch (error) { /* sin conexión: se vuelve a mirar al abrir */ }
+};
+if (/; wv\)/.test(navigator.userAgent)) checkApkUpdate();
