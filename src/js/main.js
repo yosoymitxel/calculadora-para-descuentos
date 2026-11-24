@@ -733,18 +733,20 @@ const promoSearchScore = function (promo, query) {
   if (store === query || title === query) return 1000;
   if (store.startsWith(query) || title.startsWith(query)) return 900;
   if (store.includes(query) || title.includes(query)) return 800;
-  const tokens = query.split(' ').filter(Boolean);
-  const matched = tokens.filter(function (token) { return full.includes(token); }).length;
-  return tokens.length && matched === tokens.length ? 600 : matched ? 300 + matched : 0;
+  const tokens = query.split(' ').filter(function (token) { return token.length > 2 && !PROMO_STOPWORDS.has(token); });
+  return tokens.length && tokens.every(function (token) { return full.includes(token); }) ? 600 : 0;
 };
+const PROMO_STOPWORDS = new Set(['del', 'las', 'los', 'con', 'por', 'para', 'super', 'supermercado', 'supermercados', 'tienda', 'local']);
 const getStorePromotions = function () {
   const query = normalize($('storeSelect').value);
-  return promotions.map(function (promo, index) {
+  const entries = promotions.map(function (promo, index) {
     return { promo: promo, index: index, supermarket: isSupermarketPromo(promo), score: promoSearchScore(promo, query) };
   }).filter(function (entry) {
     return promotionDiscount(entry.promo) > 0 && (query ? entry.score > 0 : entry.supermarket);
-  }).sort(function (a, b) {
-    return Number(b.supermarket) - Number(a.supermarket) || b.score - a.score ||
+  });
+  const top = entries.reduce(function (max, entry) { return Math.max(max, entry.score); }, 0);
+  return entries.filter(function (entry) { return !query || top < 800 || entry.score >= 800; }).sort(function (a, b) {
+    return b.score - a.score || Number(b.supermarket) - Number(a.supermarket) ||
       promotionDiscount(b.promo) - promotionDiscount(a.promo) ||
       promotionBankLabel(a.promo).localeCompare(promotionBankLabel(b.promo));
   });
