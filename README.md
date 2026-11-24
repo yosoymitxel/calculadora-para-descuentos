@@ -56,3 +56,7 @@ El catálogo inicial vigente contiene 23 grupos y se aplica mediante la versión
 El APK se compila solo con GitHub Actions (`.github/workflows/apk.yml`): en cada push a `main` empaqueta la web con Capacitor, compila con Gradle y adjunta `compra.apk` al release. Los archivos van dentro del APK, así que funciona sin conexión desde el primer uso.
 
 El botón **Descargar .apk** del Perfil descarga `releases/latest/download/compra.apk` y se oculta cuando la app ya corre dentro del APK. El APK va firmado con clave de depuración: Android pide permitir "orígenes desconocidos" y no sirve para Play Store.
+
+## Precios de referencia por local
+
+Arriba de la lista, **Precios de referencia** elige un local (los que aparecen en el historial guardado). Cada producto muestra el último precio unitario sin descuento en ese local y, si hubo promoción, el precio con descuento y la fecha. Funciona sin conexión. Para pasar precios entre dispositivos: Perfil → Exportar respaldo / Importar (al importar, el historial se fusiona con el actual).

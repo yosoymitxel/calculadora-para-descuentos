@@ -148,6 +148,9 @@ svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColo
 .search-field input::placeholder { color: var(--muted); }
 .search-field kbd { display: none; padding: 2px 6px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font: 11px var(--body); }
 .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.reference-store { display: flex; min-height: 44px; align-items: center; gap: 10px; margin-top: 8px; padding: 0 12px; border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600; }
+.reference-store:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.reference-store select { flex: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: var(--text); font: 500 16px var(--body); cursor: pointer; }
 .filter-row::-webkit-scrollbar { display: none; }
 .filter-chip {
   min-height: 34px;

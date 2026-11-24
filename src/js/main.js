@@ -281,8 +281,14 @@ const setSyncStatus = function (mode) {
     element.textContent = 'Local';
   }
 };
-const getLastPrice = function (itemId) {
-  return state.priceHistory.filter(function (entry) { return entry.itemId === itemId; })
+// store vacío = último precio de cualquier local. Productos libres (sin itemId) se cruzan por nombre.
+const getLastPrice = function (itemId, store) {
+  const item = state.items.find(function (entry) { return entry.id === itemId; });
+  const name = item ? normalize(item.name) : '';
+  return state.priceHistory.filter(function (entry) {
+    if (store && entry.supermarket !== store) return false;
+    return entry.itemId === itemId || (!entry.itemId && name && normalize(entry.product) === name);
+  })
     .sort(function (a, b) { return String(b.date || b.savedAt || '').localeCompare(String(a.date || a.savedAt || '')); })[0] || null;
 };
 
@@ -310,8 +316,9 @@ const countLabel = function (count, singular, plural) {
 const ICON_FLAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 0h11l-2 3 2 3H5"></path></svg>';
 const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3z"></path></svg>';
 const renderItem = function (item) {
-  const last = getLastPrice(item.id);
-  const priceHint = last ? '<span class="product-price-hint"><strong>' + escapeHTML(formatMoney(last.finalUnitPrice || last.total)) + '</strong>' + (last.supermarket ? ' · ' + escapeHTML(last.supermarket) : '') + '</span>' : '';
+  const last = getLastPrice(item.id, referenceStore);
+  const withDiscount = last && last.discountAmount > 0 ? ' · c/desc. ' + formatMoney(last.finalUnitPrice) : '';
+  const priceHint = last ? '<span class="product-price-hint"><strong>' + escapeHTML(formatMoney(last.unitPrice || last.finalUnitPrice)) + '</strong>' + escapeHTML(withDiscount + (last.supermarket && !referenceStore ? ' · ' + last.supermarket : '') + (last.date ? ' · ' + last.date : '')) + '</span>' : '';
   return '<article class="product-row' + (item.checked ? ' is-done' : '') + '" data-item-id="' + escapeHTML(item.id) + '">' +
     '<label class="product-check"><input type="checkbox" data-check="' + escapeHTML(item.id) + '" ' + (item.checked ? 'checked' : '') + ' aria-label="Marcar ' + escapeHTML(item.name) + ' como comprado"></label>' +
     '<button class="product-main" type="button" data-open-calculator="' + escapeHTML(item.id) + '" title="' + escapeHTML(item.name) + '"><span class="product-name">' + escapeHTML(item.name) + '</span>' + priceHint + '</button>' +
@@ -321,8 +328,17 @@ const renderItem = function (item) {
     '<button class="icon-action item-crud-action" type="button" data-edit-item="' + escapeHTML(item.id) + '" aria-label="Editar ' + escapeHTML(item.name) + '" title="Editar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4z"></path></svg></button>' +
     '<button class="icon-action item-crud-action danger-action" type="button" data-delete-item="' + escapeHTML(item.id) + '" aria-label="Eliminar ' + escapeHTML(item.name) + '" title="Eliminar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"></path></svg></button></div></article>';
 };
+let referenceStore = storage.get('compra.referenceStore', '') || '';
+const renderReferenceStores = function () {
+  const select = $('referenceStore');
+  const stores = Array.from(new Set(state.priceHistory.map(function (entry) { return entry.supermarket; }).filter(Boolean))).sort();
+  if (referenceStore && stores.indexOf(referenceStore) === -1) stores.push(referenceStore);
+  select.innerHTML = '<option value="">Último precio, cualquier local</option>' + stores.map(function (store) { return '<option value="' + escapeHTML(store) + '">' + escapeHTML(store) + '</option>'; }).join('');
+  select.value = referenceStore;
+};
 const renderList = function () {
   const container = $('listContainer'); if (!container) return;
+  renderReferenceStores();
   const query = normalize($('searchInput').value);
   const filtered = state.items.filter(function (item) {
     const matchesText = !query || normalize(item.name + ' ' + item.group).includes(query);
@@ -523,6 +539,7 @@ $('listContainer').addEventListener('change', function (event) {
   updateItem(checkbox.dataset.check, { checked: checkbox.checked });
 });
 $('searchInput').addEventListener('input', renderList);
+$('referenceStore').addEventListener('change', function () { referenceStore = this.value; storage.set('compra.referenceStore', referenceStore); renderList(); });
 $('filterButtons').addEventListener('click', function (event) {
   const button = event.target.closest('[data-filter]');
   if (!button) return;
@@ -1310,7 +1327,12 @@ $('importFile').addEventListener('change', async function () {
       confirmText: 'Restaurar respaldo'
     });
     if (!confirmed) return;
+    const previousHistory = state.priceHistory;
     state = applyDefaultCatalogMigration(normalizeState(imported));
+    const historyKey = function (entry) { return entry.id || [entry.itemId, entry.date, entry.savedAt].join('|'); };
+    const merged = new Map();
+    previousHistory.concat(state.priceHistory).forEach(function (entry) { merged.set(historyKey(entry), entry); });
+    state.priceHistory = Array.from(merged.values());
     const now = Date.now();
     state.items.forEach(function (item) { item.updatedAt = now; });
     state.updatedAt = now;
